@@ -100,7 +100,51 @@ priority at a time, verified against §8 before moving on.
 
 ## 4. Skill/Knowledge upload system (§5.3) — `/skills` page, versioned uploads, injection logic
 
+- [x] `lib/skills/sanitize.ts` — upload guardrail per §7: 200 KB size cap, strips
+      `<script>/<style>/<iframe>/<object>/<embed>` + content, event-handler
+      attrs, `javascript:`/`vbscript:`/`data:` URLs, control chars, zero-width /
+      bidi-override chars; normalizes line endings; reports `modified`
+- [x] `lib/skills/upload.ts` — local-first upload pipeline: sanitize →
+      title-from-filename → re-upload with same title bumps `version` on the
+      existing `client_id` (keeps remote row identity), archives the superseded
+      body into `conflict_archive` first (§5.3 "no silent overwrite"); toggle
+      active / edit without version bump
+- [x] `/skills` page (`app/skills/page.tsx`) — upload (`.md`, drag/file picker),
+      list/read/activate/deactivate/delete (tombstone via repo), version badge,
+      sanitization warnings; writes flow through the §3 sync to Supabase
+- [x] Injection reuse: §5.1 `lib/ai/matching.ts` `buildPreamble` consumes the
+      same `skills` Dexie store → uploads are injected into `/api/chat`
+      (always-on or by `trigger_keywords`) with no extra code
+- [x] Verification: `npm run verify:skills` 12/12 pass (sanitizer XSS/control/
+      size cases, filename→title, versioning bump + archive, keyword injection
+      incl. always-on / disabled, active toggle). tsc + eslint clean.
+      Chat preamble E2E re-verified with a real upload.
+
 ## 5. iOS PWA fixes (viewport-fit=cover, split icon purposes, splash screens)
+
+- [x] `app/manifest.ts` — name/short_name/start_url/standalone/colors/categories;
+      icon purposes SPLIT (`any` 192+512, separate `maskable` 512 — never
+      combined, plan §9 #3); shortcuts New Chat `/chat`, New Task `/tasks`,
+      Quick Capture `/skills?capture=1` (active when those pages land later)
+- [x] `scripts/generate-pwa-assets.mjs` — zero-dependency PNG generator
+      (brand `Z` monogram on slate-900): `public/icons/icon-192.png`,
+      `icon-512.png`, `icon-512-maskable.png`, `public/apple-touch-icon.png`
+      (180, opaque), and 16 `public/splash/*.png` launch screens covering
+      iPhone SE→15 Pro Max + iPad mini→12.9" (exact pixel sizes + media
+      queries); emits `lib/pwa-splash.ts` so markup can't drift from assets
+- [x] `app/components/PwaLinks.tsx` — `apple-touch-startup-image` `<link>` tags
+      (iOS ignores the manifest for launch images) hoisted in the root layout
+- [x] Layout: `viewport-fit=cover` + themeColor (`app/layout.tsx` Viewport
+      export), `appleWebApp { capable, statusBarStyle: black-translucent }`
+      + apple-touch-icon metadata
+- [x] Safe area: `.ios-safe-top/bottom/left/right` + `.ios-safe-bottom-float`
+      utilities in `globals.css`; body pads the notch inset; SyncIndicator
+      floats above the home indicator
+- [x] Verification: `npm run verify:pwa` 10/10 (PNG IHDR dimensions + opacity,
+      split purposes rule, shortcuts, viewport-fit, appleWebApp, safe-area);
+      live server: `/manifest.webmanifest` serves split purposes, head emits
+      viewport-fit=cover + `apple-mobile-web-app-*` + 16 startup links,
+      icons/splash return 200 image/png; `next build` ✓
 
 ## 6. Full-text search (chat, memory, knowledge, skills)
 

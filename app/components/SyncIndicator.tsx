@@ -47,7 +47,7 @@ export default function SyncIndicator() {
       onClick={() => void syncNow()}
       title={title}
       aria-live="polite"
-      className="fixed bottom-3 right-3 z-50 flex items-center gap-2 rounded-full border border-zinc-200 bg-white/90 px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm backdrop-blur transition hover:bg-white dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-300 dark:hover:bg-zinc-900"
+      className="fixed right-3 z-50 flex items-center gap-2 rounded-full border border-zinc-200 bg-white/90 px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm backdrop-blur transition hover:bg-white dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-300 dark:hover:bg-zinc-900 ios-safe-bottom-float"
     >
       <span aria-hidden className={`h-2 w-2 rounded-full ${DOT[phase] ?? "bg-zinc-400"}`} />
       <span>{label}</span>
