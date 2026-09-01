@@ -11,6 +11,7 @@
     "verify:auth": "node scripts/verify-auth.mjs",
     "verify:sync": "tsx --env-file=.env.local scripts/verify-sync.mts",
     "verify:intelligence": "tsx scripts/verify-intelligence.mts",
+    "verify:skills": "tsx scripts/verify-skills.mts",
     "smoke:chat": "node --env-file=.env.local --import tsx scripts/smoke-chat.mjs",
     "smoke:auth": "node --env-file=.env.local scripts/smoke-verify.mjs",
     "smoke:sync": "node --env-file=.env.local scripts/smoke-sync-api.mjs"
