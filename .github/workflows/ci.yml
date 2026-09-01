@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, typecheck, secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # gitleaks needs full history
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Placeholder env so the build can run without real secrets.
+      # Real keys live only in Vercel env vars (plan §9 Step 0).
+      - name: Write CI placeholder env
+        run: |
+          cat > .env.local <<'EOF'
+          NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY=placeholder-service-role-key
+          GROQ_API_KEY=placeholder-groq-key
+          GEMINI_API_KEY=placeholder-gemini-key
+          DEEPSEEK_API_KEY=placeholder-deepseek-key
+          OPENROUTER_API_KEY=placeholder-openrouter-key
+          UPSTASH_REDIS_REST_URL=https://placeholder.upstash.io
+          UPSTASH_REDIS_REST_TOKEN=placeholder-upstash-token
+          SYNC_TOKEN_SECRET=placeholder-sync-token-secret
+          CRON_SECRET=placeholder-cron-secret
+          EOF
+
+      - name: Build
+        run: npm run build
+
+      - name: Typecheck
+        run: npx tsc --noEmit

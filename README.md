@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Zonaed AI Web App
 
-## Getting Started
+Full-stack, offline-first AI assistant PWA (`agent.thesharkweb.com`) with
+cloud-synced memory, chat history, task management, knowledge base,
+personalized skills, and opt-in self-learning from chat history.
 
-First, run the development server:
+> Implementation target: `final_mvp_implementation_plan_v2.md`. Build progress
+> is tracked in [`docs/PROGRESS.md`](docs/PROGRESS.md) against plan §9.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Stack
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Next.js 16 (App Router) · Tailwind CSS 4 · Dexie.js (local-first source of
+truth) · Supabase Postgres + Auth + RLS (sync/backup layer) · Zustand ·
+Upstash Redis (rate limiting) · Vercel
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Install dependencies**
 
-## Learn More
+   ```bash
+   npm install
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. **Configure environment**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```bash
+   cp .env.example .env.local
+   # fill in: Supabase URL/keys, AI provider keys (Groq, Gemini, DeepSeek,
+   # OpenRouter), Upstash Redis, SYNC_TOKEN_SECRET (openssl rand -hex 32),
+   # CRON_SECRET
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   Env validation is zod-based and **fails fast**: `npm run build` runs
+   `scripts/check-env.mjs` first, and server code validates again at runtime
+   via `lib/env.ts`. Real keys live only in Vercel env vars — never commit
+   them (CI runs a gitleaks secret scan).
 
-## Deploy on Vercel
+3. **Provision Supabase** (manual, one-time — requires dashboard access)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   - Create the Supabase project; enable anonymous auth
+     (Auth → Providers → Anonymous).
+   - Apply the initial migration (creates `tasks`, `memory`, `knowledge`,
+     `chat_history`, `skills`, `examples`, `settings` with
+     `client_id` / `updated_at` / `deleted_at` sync columns, triggers, and
+     project-wide RLS keyed off `auth.uid()`):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+     ```bash
+     supabase link --project-ref <ref>
+     supabase db push
+     ```
+
+     or paste `supabase/migrations/0001_initial_schema.sql` into the
+     dashboard SQL editor and run it.
+
+4. **Run**
+
+   ```bash
+   npm run dev      # development
+   npm run build    # production build (env-validated)
+   npx tsc --noEmit # typecheck
+   ```
+
+## Repository boundaries
+
+This repo is **webapp-only** (Next.js app, Supabase schema, PWA assets,
+`/report` `/marketing-plan` `/competitor-spy` `/outreach`). Live-DOM extension
+features (WhatsApp CRM, Ghostwriter, Autofill, Page Watcher, OCR, Structured
+Scraping, YouTube Repurposing Studio) live in the separate
+`zonaed-ai-agent-extension` repo. The shared contract between the two is the
+`/api/sync/*` API and env-var-based provider keys — nothing else is shared.
