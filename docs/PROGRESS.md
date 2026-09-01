@@ -184,7 +184,34 @@ priority at a time, verified against §8 before moving on.
       empty stores, MD header/sections, includeDeleted, type filters, escaping,
       field spot-checks). `tsc` + `eslint` + `next build` clean.
 
-## 8. Recurring tasks + quick capture shortcut
+## 8. Recurring tasks + quick capture shortcut  *(complete)*
+
+- [x] `lib/tasks/recurrence.ts` — pure engine: `RecurrenceRule` validation
+      (`isRecurrenceRule`/`parseRecurrence`), `nextOccurrence` (daily / weekly
+      with weekday-set / monthly + yearly with end-of-month clamping to Feb 28,
+      `interval`, `until` exhaustion, strictly-after semantics; monthly/yearly
+      may fire later in the anchor's own month/year),
+      `describeRecurrence` (UI labels: "Every 2 weeks on Mon, Fri",
+      "Every month on day 15", "Custom" fallback)
+- [x] `lib/tasks/repo.ts` — `createTask` (trims title, validates recurrence +
+      due date, stamps `dirty`), `completeTask` (one-off completes in place;
+      recurring spawns the next occurrence as a NEW row, original kept as
+      history; idempotent — no double spawn; no spawn past `until`),
+      `rescheduleTask` (set/clear/validate due), `setTaskCompleted` (reopen
+      clears `completed_at`), `deleteTask` (tombstone), `listOpenTasks` /
+      `listCompletedTasks` (filter + due-date sort)
+- [x] `app/tasks/page.tsx` — list (open + completed sections, overdue
+      highlight), add form, recurrence picker (none/daily/weekly weekdays/
+      monthly/yearly + interval), complete/reopen, reschedule, delete;
+      `?capture=1` quick-capture autofocus. Overdue clock uses a
+      `useSyncExternalStore` hook (react-hooks/purity bans `Date.now()` in
+      render)
+- [x] `app/manifest.ts` — Quick Capture shortcut points to `/tasks?capture=1`
+- [x] `scripts/verify-tasks.mts` + npm `verify:tasks` — 21/21 checks pass
+      (10 recurrence-engine, 11 repo over fake-indexeddb)
+- [x] Verification: `tsc --noEmit`, `eslint` (max-warnings 0), `next build`,
+      `verify:sync` 22/22, `verify:search` 15/15, `verify:pwa` 10/10,
+      `verify:export` 12/12 — all green. Committed.
 
 ## 9. Webapp report/analysis tools (§5.2) — `/report`, `/marketing-plan`, `/competitor-spy`, `/outreach`
 

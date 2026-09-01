@@ -45,7 +45,7 @@ export default function manifest(): MetadataRoute.Manifest {
       },
       {
         name: "Quick Capture",
-        url: "/skills?capture=1",
+        url: "/tasks?capture=1",
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
       },
     ],
