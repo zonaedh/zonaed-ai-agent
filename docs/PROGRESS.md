@@ -308,6 +308,66 @@ priority at a time, verified against §8 before moving on.
 
 ## 11. Day-by-day chat history learning (§5.4) — opt-in job + review queue
 
+- [x] `lib/learn/extract.ts` — pure logic: setting keys
+      (`learn_from_chat`, `learn_last_day`), UTC day keys/bounds,
+      `pendingDays` (yesterday-and-back, watermark skip, 3-day bounded
+      lookback so a long-offline account can never trigger an LLM burst),
+      `capMessages` (120 msgs / 30k chars, chronological, newest kept),
+      extraction system prompt (only durable facts, user's own voice,
+      category/target vocab), `parseSuggestions` with a string-aware
+      salvage parser (whole-batch JSON.parse failure → brace-matching entry
+      recovery, so one truncated entry never loses the rest), validation
+      (target/category whitelists, length clamps, in-response dedupe),
+      `dedupeCandidates` against existing memory/skills text
+- [x] `lib/ai/providers.ts` — added non-streaming `completeFromProvider` +
+      `completeWithFailover` (temperature 0.2, same 429/503 failover
+      semantics as the streaming path) for background jobs with no SSE
+      consumer
+- [x] `supabase/migrations/0003_learn_suggestions.sql` — server-written
+      review queue: `learn_suggestions` (user_id, target [memory|skill],
+      title/content/category, status [pending|approved|discarded],
+      `approved_*` edit-before-approve originals for the diff,
+      `source_excerpt`, `day`, RLS = own rows, set_updated_at trigger).
+      Nothing is ever auto-applied — no hard deletes, only status marks.
+      NOTE: needs applying via `scripts/apply-migrations.mjs` (same step
+      as 0002 + Vercel env)
+- [x] `GET /api/learn/preferences` (session guard → settings
+      `learn_from_chat` state) / `POST` (opt-in upsert with server-owned
+      client_id; opt-out deletes the row so no job ever runs) — off by
+      default (plan §5.4 + §7 #8)
+- [x] `GET /api/learn/cron` — Vercel Cron daily (see vercel.json), Bearer
+      CRON_SECRET constant-time check, ≤10 users/run: watermark →
+      `chat_history` for each pending day (user-scoped, deleted_at null,
+      capped 400) → provider failover extraction call → validate + dedupe →
+      `learn_suggestions` insert; empty days stamp the watermark so they are
+      not rescanned; per-user failures leave the watermark untouched for retry
+- [x] `/api/learn/suggestions` — GET pending-first review queue; POST
+      approve/discard (id-scoped, pending-only, 60/min rate limit).
+      Approve writes the REAL row server-side (memory source
+      `learn-review`, or skills version 1 active) FIRST, then marks the
+      suggestion approved — a failed insert leaves it retryable; the
+      device picks the new row up on its next sync pull. Client may edit
+      title/content/category before approving (the plan's clear diff)
+- [x] `/memory` page — learning review queue (target/category/status
+      badges, source-excerpt quote, edit-before-approve, Approve / Edit /
+      Discard, live refresh after action) + long-term memory list from
+      Dexie (`listLive<MemoryRow>`, soft-delete); load uses the repo's
+      async-.then-cancellation pattern (react-hooks/set-state-in-effect)
+- [x] `/settings` — "Learn from my chat history" opt-in toggle, off by
+      default, per-account (synced server-side, not per-device); hub links
+      `/memory` and `/settings`
+- [x] `vercel.json` — daily cron hits `/api/learn/cron` (plus existing
+      minutely push cron)
+- [x] `scripts/verify-learn.mts` + npm `verify:learn` — 27/27 checks pass
+      (day window/watermark, prompt build, salvage parser, validation,
+      dedupe, provider failover incl. 429, 3 route contracts, migration
+      SQL, vercel.json, settings toggle, memory queue, hub, script)
+- [x] Verification: `tsc --noEmit`, `eslint` (max-warnings 0), `next build`
+      (all learn routes + /memory prerendered), full suite re-run —
+      auth, export 12/12, intelligence 16/16, learn 27/27, push 22/22,
+      pwa 10/10, search 15/15, skills 12/12, sync 22/22, tasks 21/21,
+      tools 22/22 — all green. Committed.
+
 ## 12. Nice-to-haves (voice input, calendar sync, command palette)
 
 ---

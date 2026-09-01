@@ -4,6 +4,7 @@ import Link from "next/link";
 
 const LINKS: { href: string; title: string; description: string }[] = [
   { href: "/tasks", title: "Tasks", description: "CRUD, recurrence, due-date highlighting" },
+  { href: "/memory", title: "Memory", description: "Long-term memory + chat-learning review queue" },
   { href: "/skills", title: "Skills", description: "Upload .md skills, versioned, injected into chat" },
   { href: "/search", title: "Search", description: "Full-text across chat, memory, knowledge, skills" },
   { href: "/report", title: "Report", description: "Website audit + client proposal from a URL" },

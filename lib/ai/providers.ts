@@ -111,6 +111,12 @@ function openAiBody(messages: ChatMessageInput[], model: string): Record<string,
   return { model, messages, stream: true, temperature: 0.7 };
 }
 
+function openAiCompleteBody(messages: ChatMessageInput[], model: string): Record<string, unknown> {
+  // Low temperature: extraction/structuring jobs want determinism, not flair.
+  return { model, messages, stream: false, temperature: 0.2 };
+}
+
+
 function geminiBody(messages: ChatMessageInput[]): Record<string, unknown> {
   const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
   const contents = messages
@@ -230,5 +236,84 @@ export async function streamWithFailover(
   }
   throw new Error(`All providers failed: ${errors.join(" | ")}`);
 }
+
+// ---------------------------------------------------------------------------
+// Non-streaming completion (same failover semantics, buffered result)
+// ---------------------------------------------------------------------------
+
+/**
+ * One-shot (non-streaming) completion from a single provider. Used by
+ * background jobs (e.g. /api/learn/cron) where SSE has no consumer.
+ */
+export async function completeFromProvider(
+  provider: ProviderConfig,
+  apiKey: string,
+  messages: ChatMessageInput[],
+  fetchImpl: typeof fetch = fetch,
+): Promise<string> {
+  const url =
+    provider.protocol === "gemini"
+      ? `${provider.baseUrl}/models/${provider.model}:generateContent?key=${encodeURIComponent(apiKey)}`
+      : `${provider.baseUrl}/chat/completions`;
+
+  const body =
+    provider.protocol === "gemini"
+      ? geminiBody(messages)
+      : openAiCompleteBody(messages, provider.model);
+
+  const res = await fetchImpl(url, {
+    method: "POST",
+    headers: { ...provider.headers(apiKey), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new ProviderError(
+      `${provider.label} error ${res.status}: ${detail.slice(0, 300)}`,
+      res.status,
+      provider.id,
+    );
+  }
+
+  const json = (await res.json()) as Record<string, unknown>;
+  if (provider.protocol === "gemini") {
+    const candidates = json.candidates as
+      | { content?: { parts?: { text?: string }[] } }[]
+      | undefined;
+    return candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  }
+  const choices = json.choices as { message?: { content?: string } }[] | undefined;
+  return choices?.[0]?.message?.content ?? "";
+}
+
+export interface CompleteWithFailoverResult {
+  text: string;
+  provider: ProviderConfig;
+}
+
+/**
+ * Non-streaming twin of streamWithFailover: try providers in failover order,
+ * return the first successful buffered completion.
+ */
+export async function completeWithFailover(
+  providers: ProviderConfig[],
+  messages: ChatMessageInput[],
+  fetchImpl: typeof fetch = fetch,
+): Promise<CompleteWithFailoverResult> {
+  const errors: string[] = [];
+  for (const provider of providers) {
+    const apiKey = process.env[ENV_KEYS[provider.id]] ?? "";
+    try {
+      const text = await completeFromProvider(provider, apiKey, messages, fetchImpl);
+      return { text, provider };
+    } catch (err) {
+      errors.push(`${provider.label}: ${err instanceof Error ? err.message : String(err)}`);
+      if (!shouldFailover(err)) throw err;
+    }
+  }
+  throw new Error(`All providers failed: ${errors.join(" | ")}`);
+}
+
 
 

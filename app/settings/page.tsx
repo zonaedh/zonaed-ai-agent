@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { authedFetch } from "@/lib/auth/app-session";
 import {
   getPushState,
   setDigestPreference,
@@ -28,9 +29,11 @@ const DIGEST_OPTIONS: { value: DigestChoice; label: string; hint: string }[] = [
 export default function SettingsPage() {
   const [state, setState] = useState<PushState | null>(null);
   const [digest, setDigest] = useState<DigestChoice>("off");
+  const [learnEnabled, setLearnEnabled] = useState<boolean | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [learnFlash, setLearnFlash] = useState(false);
 
   const refresh = useCallback(async () => {
     setState(await getPushState());
@@ -41,10 +44,35 @@ export default function SettingsPage() {
     void getPushState().then((s) => {
       if (!cancelled) setState(s);
     });
+    // Learning opt-in lives server-side (synced, per-account).
+    void authedFetch("/api/learn/preferences").then(async (res) => {
+      if (cancelled || !res.ok) return;
+      const json = (await res.json()) as { enabled: boolean };
+      if (!cancelled) setLearnEnabled(json.enabled);
+    });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  async function toggleLearn() {
+    if (learnEnabled === null) return;
+    await run("learn", async () => {
+      const res = await authedFetch("/api/learn/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !learnEnabled }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(json.error ?? "Could not update learning preference");
+      }
+      setLearnEnabled(!learnEnabled);
+      setLearnFlash(true);
+      setTimeout(() => setLearnFlash(false), 1500);
+    });
+  }
+
 
   async function run(action: string, fn: () => Promise<void>) {
     setBusy(action);
@@ -170,6 +198,54 @@ export default function SettingsPage() {
         )}
         {savedFlash && (
           <p className="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400">Digest preference saved.</p>
+        )}
+      </section>
+
+      {/* ------------------------------------------------------ learning -- */}
+      <section className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Learn from my chat history</h2>
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+              A daily job reviews prior-day chats and proposes durable facts to remember.
+              Suggestions appear in{" "}
+              <Link href="/memory" className="underline hover:text-emerald-600">
+                Memory
+              </Link>{" "}
+              for review — nothing is ever added automatically.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={learnEnabled === true}
+            disabled={busy !== null || learnEnabled === null}
+            onClick={() => void toggleLearn()}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:opacity-40 ${
+              learnEnabled
+                ? "bg-emerald-600"
+                : "bg-zinc-300 dark:bg-zinc-600"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                learnEnabled ? "left-[22px]" : "left-0.5"
+              }`}
+            />
+          </button>
+        </div>
+        {learnEnabled === null ? (
+          <p className="mt-2 text-[11px] text-zinc-400">Checking preference…</p>
+        ) : learnFlash ? (
+          <p className="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400">
+            Learning preference saved.
+          </p>
+        ) : (
+          <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+            {learnEnabled
+              ? "On — the daily job will run (off by default, plan §5.4)."
+              : "Off — no learning job runs until you enable it."}
+          </p>
         )}
       </section>
 

@@ -21,7 +21,8 @@
     "generate:pwa": "node scripts/generate-pwa-assets.mjs",
     "smoke:chat": "node --env-file=.env.local --import tsx scripts/smoke-chat.mjs",
     "smoke:auth": "node --env-file=.env.local scripts/smoke-verify.mjs",
-    "smoke:sync": "node --env-file=.env.local scripts/smoke-sync-api.mjs"
+    "smoke:sync": "node --env-file=.env.local scripts/smoke-sync-api.mjs",
+    "verify:learn": "tsx scripts/verify-learn.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
