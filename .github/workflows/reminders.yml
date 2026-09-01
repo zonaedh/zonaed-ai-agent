@@ -25,7 +25,6 @@ jobs:
         if: ${{ secrets.PROD_URL != '' }}
         run: |
           curl -sS -o /dev/null -w '%{http_code}\n' \
-            -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             --max-time 60 \
             "${{ secrets.PROD_URL }}/api/push/cron"
