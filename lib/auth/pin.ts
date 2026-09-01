@@ -81,15 +81,21 @@ export async function changePin(currentPin: string, newPin: string): Promise<boo
   return true;
 }
 
-/** Clears the gate (locks the device). Does NOT touch the Supabase session. */
-export function lockDevice(): void {
-  sessionStorage.setItem("zonaed.locked", "1");
+// Lock state: a tab session starts LOCKED (no marker in sessionStorage) and
+// stays unlocked for the lifetime of the tab once unlockDevice() runs.
+// Closing the tab (or PWA shell) re-locks the gate.
+const UNLOCKED_KEY = "zonaed.unlocked";
+
+/** Marks this tab session unlocked. Does NOT touch the Supabase session. */
+export function unlockDevice(): void {
+  sessionStorage.setItem(UNLOCKED_KEY, "1");
 }
 
-export function unlockDevice(): void {
-  sessionStorage.removeItem("zonaed.locked");
+/** Clears the unlocked marker — the gate treats the tab as locked again. */
+export function lockDevice(): void {
+  sessionStorage.removeItem(UNLOCKED_KEY);
 }
 
 export function isLocked(): boolean {
-  return typeof sessionStorage !== "undefined" && sessionStorage.getItem("zonaed.locked") === "1";
+  return typeof sessionStorage !== "undefined" && sessionStorage.getItem(UNLOCKED_KEY) !== "1";
 }

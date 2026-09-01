@@ -34,7 +34,16 @@ priority at a time, verified against §8 before moving on.
       `requireSyncToken` guard for `/api/sync/*`
 - [x] Token logic checks: `node scripts/verify-auth.mjs` (5/5 pass);
       live HTTP smoke: `node scripts/smoke-verify.mjs` (4/4 pass)
-- [ ] PIN unlock UI (client component wiring setPin/verifyPin + session fetch)
+- [x] PIN unlock UI — `app/components/PinGate.tsx` mounted in the root layout:
+      full-screen gate with setup (first run: 4–12 digit PIN + confirm, stored
+      as PBKDF2 hash locally) and locked states; children do not render (and
+      the sync scheduler does not boot) until unlocked; 5 wrong attempts →
+      30s cooldown; offline unlock still opens the app (local-first).
+      `lib/auth/pin.ts` lock semantics flipped so a fresh tab session starts
+      LOCKED (`zonaed.unlocked` marker). `lib/auth/app-session.ts` (new):
+      mints the HMAC session token via `ensureSupabaseSession()` →
+      `POST /api/auth/session`, stores it in sessionStorage, `authedFetch`
+      attaches `Authorization: Bearer` + refresh-once-on-401 for /api/* calls.
 - [x] End-to-end verification against the live Supabase project:
       `node scripts/verify-auth-e2e.mjs` — anonymous sign-in (2 distinct
       users), RLS sets `user_id` from `auth.uid()`, owner read, cross-user

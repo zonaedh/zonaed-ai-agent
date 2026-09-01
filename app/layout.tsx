@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import SyncIndicator from "./components/SyncIndicator";
 import PwaLinks from "./components/PwaLinks";
+import PinGate from "./components/PinGate";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -49,8 +50,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col ios-safe-top">
         <PwaLinks />
-        {children}
-        <SyncIndicator />
+        <PinGate>
+          {children}
+          <SyncIndicator />
+        </PinGate>
       </body>
     </html>
   );
