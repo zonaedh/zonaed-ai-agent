@@ -30,7 +30,9 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   groq: {
     id: "groq",
     label: "Groq",
-    model: "llama-3.3-70b-versatile",
+    // Groq retired llama-3.3 (404 model_not_found); gpt-oss-120b is its
+    // current flagship chat model (verified live via /openai/v1/models).
+    model: "openai/gpt-oss-120b",
     baseUrl: "https://api.groq.com/openai/v1",
     headers: (k) => ({ Authorization: `Bearer ${k}` }),
     protocol: "openai",
