@@ -168,6 +168,22 @@ priority at a time, verified against §8 before moving on.
 
 ## 7. Data export/backup
 
+- [x] `lib/export/exporters.ts` — pure builders (tested in Node, run in browser):
+      `buildJsonExport` (schema-versioned bundle, `app` marker, `exportedAt`,
+      six stores, per-store counts; strips local-only `dirty`, keeps
+      `client_id`/timestamps/`deleted_at` tombstones for a future restore),
+      `buildMarkdownExport` (per-type sections with `### N.` numbered rows;
+      `includeDeleted` flag; `type` full/skills/knowledge), `markdownRow`
+      (escapes `|` and newlines), browser download helpers (Blob + object URL)
+- [x] `/export` page (`app/export/page.tsx`) — four actions: Full JSON backup,
+      Full Markdown, Skills-as-Markdown (re-uploadable to /skills §5.3),
+      Knowledge-as-Markdown (re-importable to /knowledge); per-action status
+      feedback; snapshots live to include tombstoned rows
+- [x] Verification: `npm run verify:export` 12/12 pass (schema marker/version,
+      counts, dirty-strip + tombstone-keep, JSON round-trip via stringify/parse,
+      empty stores, MD header/sections, includeDeleted, type filters, escaping,
+      field spot-checks). `tsc` + `eslint` + `next build` clean.
+
 ## 8. Recurring tasks + quick capture shortcut
 
 ## 9. Webapp report/analysis tools (§5.2) — `/report`, `/marketing-plan`, `/competitor-spy`, `/outreach`
