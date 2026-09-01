@@ -35,6 +35,8 @@ interface ChatRequestBody {
   preamble?: unknown;
   chainOfDraft?: unknown;
   approvedOutline?: unknown;
+  /** Optional provider id ("groq" | "gemini" | …). Absent or "auto" = failover chain. */
+  provider?: unknown;
 }
 
 function sseEvent(event: Record<string, unknown>): Uint8Array {
@@ -139,8 +141,20 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // 5. Stream with provider failover.
-  const providers = availableProviders(process.env);
+  // 5. Stream with provider failover — or pin to one model when the client
+  // asked for a specific provider (dashboard model selector). A pinned
+  // provider that errors surfaces immediately; "auto" keeps the chain.
+  let providers = availableProviders(process.env);
+  const providerParam = typeof body.provider === "string" ? body.provider : "auto";
+  if (providerParam !== "auto") {
+    providers = providers.filter((p) => p.id === providerParam);
+    if (providers.length === 0) {
+      return Response.json(
+        { error: `Provider "${providerParam}" is not configured or unavailable` },
+        { status: 400 },
+      );
+    }
+  }
   if (providers.length === 0) {
     return Response.json(
       { error: "No AI provider configured. Set at least one provider API key." },
