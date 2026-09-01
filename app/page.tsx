@@ -11,6 +11,7 @@ const LINKS: { href: string; title: string; description: string }[] = [
   { href: "/competitor-spy", title: "Competitor spy", description: "Analyze a competitor's positioning + gaps" },
   { href: "/outreach", title: "Outreach", description: "LinkedIn + cold outreach from a prospect page" },
   { href: "/export", title: "Export", description: "JSON + Markdown backup of all data" },
+  { href: "/settings", title: "Settings", description: "Push notifications, reminders, digest" },
 ];
 
 export default function Home() {

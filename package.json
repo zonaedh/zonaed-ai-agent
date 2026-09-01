@@ -16,6 +16,7 @@
     "verify:export": "tsx scripts/verify-export.mts",
     "verify:tasks": "tsx scripts/verify-tasks.mts",
     "verify:tools": "tsx scripts/verify-tools.mts",
+    "verify:push": "tsx scripts/verify-push.mts",
     "verify:pwa": "tsx scripts/verify-pwa.mts",
     "generate:pwa": "node scripts/generate-pwa-assets.mjs",
     "smoke:chat": "node --env-file=.env.local --import tsx scripts/smoke-chat.mjs",
@@ -29,6 +30,7 @@
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "web-push": "^3.6.7",
     "zod": "^4.5.4",
     "zustand": "^5.0.15"
   },
@@ -37,6 +39,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "fake-indexeddb": "^6.2.5",

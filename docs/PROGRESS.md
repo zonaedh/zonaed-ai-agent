@@ -260,6 +260,52 @@ priority at a time, verified against §8 before moving on.
 
 ## 10. Web Push (reminders + digest)
 
+- [x] `web-push` dependency (+ `@types/web-push`); real VAPID keypair
+      generated (`npx web-push generate-vapid-keys`) into `.env.local`;
+      `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` /
+      `VAPID_SUBJECT` (optional) added to `.env.example`, `lib/env.ts`,
+      `scripts/check-env.mjs` (required — build fails fast without them)
+- [x] `supabase/migrations/0002_push_subscriptions.sql` — device-bound
+      `push_subscriptions` (unique user_id+endpoint, RLS = own rows,
+      not synced so hard-delete applies) + `tasks.reminded_at` column.
+      NOTE: needs applying — run `scripts/apply-migrations.mjs` with
+      SUPABASE_ACCESS_TOKEN + SUPABASE_PROJECT_REF (same step as Vercel env)
+- [x] `lib/push/payload.ts` — pure logic: reminder payload (title clamp,
+      whitespace cleanup, due-time phrasing), digest payload + summary
+      (overdue/today/this-week counts, next-3 titles, empty states),
+      `isDigestFrequency`, server settings row ids
+- [x] `lib/push/send.ts` — VAPID config guard, `sendToSubscription`
+      (24 h TTL, 404/410 → expired), `sendToUser` (all devices per user,
+      dead endpoints deleted, service-role client always user-filtered)
+- [x] Routes (all `force-dynamic`): `POST /api/push/subscribe` (session
+      guard, zod-validated subscription, upsert on user_id+endpoint),
+      `POST /api/push/unsubscribe` (hard delete — device-bound data),
+      `POST /api/push/preferences` (off/daily/weekly → settings table,
+      server-owned client_id), `GET /api/push/cron` (Bearer CRON_SECRET,
+      constant-time compare)
+- [x] Cron logic: reminders = open tasks due_at ≤ now with reminded_at
+      null → one push per device → per-row reminded_at stamp (no double
+      fires; recurring tasks re-arm naturally); digests = interval-based
+      (≥20 h daily, ≥6 d weekly) so server timezone never shifts cadence,
+      watermark in settings `push_digest_last_sent`, sent-count-gated
+- [x] `vercel.json` — cron hits `/api/push/cron` every minute
+- [x] `public/sw.js` — dependency-free SW: push → notification (icon, tag,
+      payload url), click → focus-and-navigate or openWindow; no fetch
+      handler (Next.js owns caching); install/activate skipWaiting+claim
+- [x] `lib/push/client.ts` — registerServiceWorker, getPushState,
+      subscribeToPush (permission → SW → pushManager.subscribe with VAPID
+      key → server POST), unsubscribeFromPush (local-first), 
+      setDigestPreference; authedFetch handles token mint/refresh
+- [x] `/settings` page — permission-state UI (unsupported/denied/off/on),
+      enable/disable per device, digest Off/Daily/Weekly selector (gated on
+      push being enabled); no permission prompt on page load; hub link added
+- [x] Verification: `npm run verify:push` 22/22 (payload/summary logic,
+      unconfigured guard, fabricated-endpoint no-throw contract, SW handlers,
+      4 route contracts, migration SQL, vercel.json, client flow, settings
+      page no-auto-prompt, env wiring, hub, deps); `tsc --noEmit`, `eslint`
+      (max-warnings 0), `next build` (all push routes + /settings present),
+      full existing suite re-run — all green. Committed.
+
 ## 11. Day-by-day chat history learning (§5.4) — opt-in job + review queue
 
 ## 12. Nice-to-haves (voice input, calendar sync, command palette)

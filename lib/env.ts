@@ -24,6 +24,10 @@ export const envSchema = z.object({
   SYNC_TOKEN_SECRET: z.string().min(32),
   // Cron
   CRON_SECRET: z.string().min(1),
+  // Web Push (plan §4 /push) — VAPID keypair; public half is client-exposed
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().min(1),
+  VAPID_PRIVATE_KEY: z.string().min(1),
+  VAPID_SUBJECT: z.string().optional(),
   // Optional
   SENTRY_DSN: z.string().optional(),
 });
