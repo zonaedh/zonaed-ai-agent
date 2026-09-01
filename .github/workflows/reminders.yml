@@ -1,0 +1,31 @@
+# Frequent reminder pings for /api/push/cron.
+#
+# Why GitHub Actions? Vercel Hobby only permits daily cron jobs, but task
+# reminders need minute-level scheduling. This workflow pings the deployed
+# app every 5 minutes (best-effort; GH Actions schedules can drift a few
+# minutes) using the same Authorization: Bearer <CRON_SECRET> contract that
+# Vercel Cron uses.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   PROD_URL    — e.g. https://zonaed-ai-agent.vercel.app  (no trailing slash)
+#   CRON_SECRET — the same value as the Vercel env var CRON_SECRET
+
+name: Push reminders
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping push cron
+        if: ${{ secrets.PROD_URL != '' }}
+        run: |
+          curl -sS -o /dev/null -w '%{http_code}\n' \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --max-time 60 \
+            "${{ secrets.PROD_URL }}/api/push/cron"
