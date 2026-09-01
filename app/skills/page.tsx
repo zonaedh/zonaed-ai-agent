@@ -14,6 +14,7 @@ import { getDb } from "@/lib/db/client";
 import { softDeleteLocal } from "@/lib/db/repo";
 import type { SkillRow } from "@/lib/db/types";
 import { editSkill, setSkillActive, uploadSkillFile } from "@/lib/skills/upload";
+import PageNav from "@/app/components/PageNav";
 
 function StatusBadge({ skill }: { skill: SkillRow }) {
   return (
@@ -96,8 +97,15 @@ export default function SkillsPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Skills</h1>
-      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+      <PageNav
+        title="Skills"
+        actions={[
+          { href: "/chat", label: "Chat", icon: "💬" },
+          { href: "/memory", label: "Memory", icon: "🧠" },
+          { href: "/tasks", label: "Tasks", icon: "✅" },
+        ]}
+      />
+      <p className="-mt-3 text-sm text-zinc-500 dark:text-zinc-400">
         Upload <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">.md</code> files the agent
         treats as ground truth. Skills with trigger keywords inject only when a message matches;
         skills with no keywords are always on. Re-uploading the same title creates a new version.

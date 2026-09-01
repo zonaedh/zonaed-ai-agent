@@ -19,6 +19,7 @@ import {
   type DigestChoice,
   type PushState,
 } from "@/lib/push/client";
+import PageNav from "@/app/components/PageNav";
 
 const DIGEST_OPTIONS: { value: DigestChoice; label: string; hint: string }[] = [
   { value: "off", label: "Off", hint: "No digest" },
@@ -93,11 +94,15 @@ export default function SettingsPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">
-      <Link href="/" className="text-sm text-zinc-500 hover:text-emerald-600 dark:text-zinc-400">
-         ← Home
-      </Link>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight">Settings</h1>
-      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+      <PageNav
+        title="Settings"
+        actions={[
+          { href: "/chat", label: "Chat", icon: "💬" },
+          { href: "/tasks", label: "Tasks", icon: "✅" },
+          { href: "/skills", label: "Skills", icon: "📚" },
+        ]}
+      />
+      <p className="-mt-3 text-sm text-zinc-500 dark:text-zinc-400">
         Notifications are device-specific — enable them on each device you want reminders on.
       </p>
 

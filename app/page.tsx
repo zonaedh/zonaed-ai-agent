@@ -16,6 +16,12 @@ export default function Home() {
       <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
         Offline-first AI assistant. Local data, synced when online.
       </p>
+      <Link
+        href="/chat"
+        className="mb-5 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+      >
+        💬 Start chatting
+      </Link>
       <div className="grid gap-3 sm:grid-cols-2">
         {NAV_LINKS.map((link) => (
           <Link

@@ -11,6 +11,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { authedFetch } from "@/lib/auth/app-session";
+import PageNav, { type PageNavAction } from "./PageNav";
 
 export interface ToolRunnerProps {
   tool: "report" | "marketing-plan" | "competitor-spy" | "outreach";
@@ -143,10 +144,23 @@ export default function ToolRunner(props: ToolRunnerProps) {
 
   const running = phase === "crawling" || phase === "generating";
 
+  // Cross-link the sibling §5.2 tools + the task list so users can hop between
+  // related workflows without going back to the hub.
+  const TOOL_LINKS: Record<string, { href: string; label: string; icon: string }> = {
+    report: { href: "/report", label: "Report", icon: "📋" },
+    "marketing-plan": { href: "/marketing-plan", label: "Marketing", icon: "📈" },
+    "competitor-spy": { href: "/competitor-spy", label: "Spy", icon: "🕵️" },
+    outreach: { href: "/outreach", label: "Outreach", icon: "✉️" },
+  };
+  const actionLinks: PageNavAction[] = Object.entries(TOOL_LINKS)
+    .filter(([id]) => id !== props.tool)
+    .map(([, l]) => l);
+  actionLinks.push({ href: "/tasks", label: "Tasks", icon: "✅" });
+
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">
-      <h1 className="mb-1 text-2xl font-bold tracking-tight">{props.title}</h1>
-      <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">{props.description}</p>
+      <PageNav title={props.title} actions={actionLinks} />
+      <p className="-mt-3 mb-6 text-sm text-zinc-500 dark:text-zinc-400">{props.description}</p>
 
       <form
         onSubmit={(e) => {

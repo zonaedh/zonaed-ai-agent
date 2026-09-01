@@ -18,6 +18,7 @@ import {
   downloadJson,
   downloadMarkdown,
 } from "@/lib/export/exporters";
+import PageNav from "@/app/components/PageNav";
 
 export default function ExportPage() {
   const [status, setStatus] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
@@ -56,8 +57,15 @@ export default function ExportPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">
-      <h1 className="mb-1 text-2xl font-bold tracking-tight">Data export</h1>
-      <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
+      <PageNav
+        title="Data export"
+        actions={[
+          { href: "/skills", label: "Skills", icon: "📚" },
+          { href: "/memory", label: "Memory", icon: "🧠" },
+          { href: "/search", label: "Search", icon: "🔍" },
+        ]}
+      />
+      <p className="-mt-3 mb-6 text-sm text-zinc-500 dark:text-zinc-400">
         Download a complete backup of your on-device data — chat, memory, tasks,
         knowledge, and skills. JSON is schema-versioned for a future import;
         the Markdown files are also re-uploadable as skill/knowledge docs.

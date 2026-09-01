@@ -22,6 +22,7 @@ import {
   memoryToSearchDoc,
   skillToSearchDoc,
 } from "@/lib/search/adapters";
+import PageNav from "@/app/components/PageNav";
 
 const SOURCE_LABEL: Record<string, string> = {
   chat_history: "Chat",
@@ -149,8 +150,15 @@ export default function SearchPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">
-      <h1 className="mb-1 text-2xl font-bold tracking-tight">Search</h1>
-      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
+      <PageNav
+        title="Search"
+        actions={[
+          { href: "/chat", label: "Chat", icon: "💬" },
+          { href: "/tasks", label: "Tasks", icon: "✅" },
+          { href: "/memory", label: "Memory", icon: "🧠" },
+        ]}
+      />
+      <p className="-mt-3 mb-4 text-sm text-zinc-500 dark:text-zinc-400">
         Searches your offline synced data — chat, memory, knowledge, and skills.
       </p>
 

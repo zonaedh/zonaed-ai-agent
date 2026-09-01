@@ -28,6 +28,7 @@ import {
 } from "@/lib/tasks/repo";
 import VoiceButton from "@/app/components/VoiceButton";
 import CalendarTools from "@/app/components/CalendarTools";
+import PageNav from "@/app/components/PageNav";
 
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"] as const;
 const FREQS: Array<{ value: RecurrenceFreq | "none"; label: string }> = [
@@ -146,8 +147,15 @@ export default function TasksPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">
-      <h1 className="mb-1 text-2xl font-bold tracking-tight">Tasks</h1>
-      <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
+      <PageNav
+        title="Tasks"
+        actions={[
+          { href: "/chat", label: "Chat", icon: "💬" },
+          { href: "/skills", label: "Skills", icon: "📚" },
+          { href: "/settings", label: "Settings", icon: "⚙️" },
+        ]}
+      />
+      <p className="-mt-3 mb-6 text-sm text-zinc-500 dark:text-zinc-400">
         Offline-first checklist. Completing a recurring task schedules its next occurrence automatically.
       </p>
 

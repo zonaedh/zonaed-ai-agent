@@ -18,6 +18,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { authedFetch } from "@/lib/auth/app-session";
 import { listLive, softDeleteLocal } from "@/lib/db/repo";
 import type { MemoryRow } from "@/lib/db/types";
+import PageNav from "@/app/components/PageNav";
 
 interface Suggestion {
   id: string;
@@ -254,12 +255,14 @@ export default function MemoryPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-4 pb-16 pt-8">
-      <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold">Memory</h1>
-        <Link href="/" className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">
-          ← Home
-        </Link>
-      </header>
+      <PageNav
+        title="Memory"
+        actions={[
+          { href: "/chat", label: "Chat", icon: "💬" },
+          { href: "/skills", label: "Skills", icon: "📚" },
+          { href: "/search", label: "Search", icon: "🔍" },
+        ]}
+      />
 
       {flash ? (
         <p className="mb-4 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-950/30 dark:text-emerald-200">
