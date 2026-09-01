@@ -24,12 +24,15 @@ import type { ExampleRow, MemoryRow, SkillRow } from "../lib/db/types";
 let passed = 0;
 let finished = 0;
 const TOTAL = 16;
+/** Only the async checks contribute to `finished`; the rest run synchronously. */
+const ASYNC_TOTAL = 3;
 
 function maybeDone() {
   finished += 1;
-  if (finished === TOTAL) {
-    if (process.exitCode === 1) process.exit(1);
+  if (finished === ASYNC_TOTAL) {
+    if (process.exitCode === 1 || passed !== TOTAL) process.exit(1);
     console.log(`\n${passed}/${TOTAL} intelligence checks passed`);
+    process.exit(0);
   }
 }
 
@@ -269,7 +272,7 @@ async function runAllExhausted() {
 
 check("providers: all providers exhausted → aggregated error", runAllExhausted);
 
-// Keep the process alive until async checks settle.
-setInterval(() => {}, 1000);
+// The async checks above (ASYNC_TOTAL = 3) settle and trigger a deterministic
+// process.exit() in maybeDone — no keep-alive needed.
 
 
