@@ -11,12 +11,31 @@
 // ============================================================================
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { listLive, newClientId, putLocal } from "@/lib/db/repo";
+import { listLive, newClientId, putLocal, softDeleteLocal } from "@/lib/db/repo";
 import type { ChatMessageRow, ExampleRow, MemoryRow, SkillRow } from "@/lib/db/types";
 import { buildPreamble } from "@/lib/ai/matching";
+import { authedFetch } from "@/lib/auth/app-session";
+import ChatSidebar, { type SessionSummary } from "./Sidebar";
+
+interface ModelInfo {
+  id: string;
+  label: string;
+  model: string;
+}
+
+/** Time-of-day greeting without reading the clock during render (SSR-safe). */
+function useGreeting(): string {
+  return useSyncExternalStore(
+    () => () => {},
+    () => {
+      const h = new Date().getHours();
+      return h < 12 ? "Good Morning" : h < 17 ? "Good Afternoon" : "Good Evening";
+    },
+    () => "",
+  );
+}
 
 export default function ChatPage() {
   const all = useLiveQuery(async () => listLive<ChatMessageRow>("chat_history"), [], []);
@@ -48,8 +67,36 @@ export default function ChatPage() {
   const [stream, setStream] = useState<{ text: string; provider?: string; model?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [selected, setSelected] = useState<string>(
+    typeof window !== "undefined" ? (localStorage.getItem("chat.model") ?? "auto") : "auto",
+  );
+  const [deepDraft, setDeepDraft] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  // Available models for the selector (session-guarded endpoint, keys never leave the server).
+  useEffect(() => {
+    let cancelled = false;
+    void authedFetch("/api/models")
+      .then((r) => (r.ok ? r.json() : { providers: [] }))
+      .then((d: { providers?: ModelInfo[] }) => {
+        if (!cancelled) setModels(d.providers ?? []);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const pickModel = useCallback((id: string) => {
+    setSelected(id);
+    try {
+      localStorage.setItem("chat.model", id);
+    } catch {
+      /* private mode — selection just won't persist */
+    }
+  }, []);
 
   const messages = useMemo(
     () => sessions.find((s) => s.id === activeId)?.msgs ?? [],
@@ -116,10 +163,15 @@ export default function ChatPage() {
         });
       };
       try {
-        const res = await fetch("/api/chat", {
+        const res = await authedFetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: payloadMessages, preamble }),
+          body: JSON.stringify({
+            messages: payloadMessages,
+            preamble,
+            provider: selected,
+            chainOfDraft: deepDraft || undefined,
+          }),
           signal: controller.signal,
         });
         if (!res.ok || !res.body) {
@@ -170,7 +222,27 @@ export default function ChatPage() {
         setBusy(false);
       }
     },
-    [busy, activeId, sessions],
+    [busy, activeId, selected, deepDraft, sessions],
+  );
+
+  /** Soft-delete every message of a session (tombstones sync to Supabase). */
+  const deleteSession = useCallback(
+    async (id: string) => {
+      const msgs = all?.filter((m) => m.session_id === id) ?? [];
+      for (const m of msgs) await softDeleteLocal("chat_history", m.client_id);
+      if (id === sessionId) setSessionId(null); // fall back to the latest remaining
+    },
+    [all, sessionId],
+  );
+
+  const summaries: SessionSummary[] = useMemo(
+    () =>
+      sessions.map((s) => ({
+        id: s.id,
+        title: s.msgs.find((m) => m.role === "user")?.content.slice(0, 60) ?? "New chat",
+        latest: s.latest,
+      })),
+    [sessions],
   );
 
   const newChat = useCallback(() => {
@@ -178,67 +250,98 @@ export default function ChatPage() {
     setError(null);
   }, []);
 
+  const greeting = useGreeting();
+  const activeModel = models.find((m) => m.id === selected);
+
   return (
-    <main className="mx-auto flex h-dvh max-w-3xl flex-col px-4">
-      <header className="flex items-center justify-between py-4">
-        <Link href="/" className="text-sm text-neutral-400 hover:text-white">
-          ← Home
-        </Link>
-        <div className="flex items-center gap-2">
-          {sessions.length > 1 && (
+    <div className="flex h-dvh bg-white text-neutral-800">
+      <ChatSidebar
+        sessions={summaries}
+        activeId={activeId}
+        onSelect={(id) => setSessionId(id)}
+        onNew={newChat}
+        onDelete={(id) => void deleteSession(id)}
+      />
+      <main className="flex flex-1 flex-col">
+        <header className="flex items-center justify-between px-6 py-3">
+          <div className="relative">
             <select
-              value={activeId ?? ""}
-              onChange={(e) => setSessionId(e.target.value)}
-              className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-300"
+              value={selected}
+              onChange={(e) => pickModel(e.target.value)}
+              className="appearance-none rounded-xl border border-neutral-200 bg-white py-1.5 pl-9 pr-8 text-sm font-medium shadow-sm outline-none hover:border-neutral-300"
             >
-              {sessions.map((s, i) => (
-                <option key={s.id} value={s.id}>
-                  {i === 0 ? "Latest chat" : `Chat ${sessions.length - i}`}
+              <option value="auto">⚡ Auto Route</option>
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label} · {m.model}
                 </option>
               ))}
             </select>
-          )}
-          <button
-            onClick={newChat}
-            className="rounded bg-neutral-800 px-3 py-1 text-xs text-neutral-200 hover:bg-neutral-700"
-          >
-            + New chat
-          </button>
-        </div>
-      </header>
+            <span className="pointer-events-none absolute left-3 top-1.5 text-sm">🤖</span>
+            <span className="pointer-events-none absolute right-3 top-2 text-xs text-neutral-400">▾</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-xs text-neutral-400 sm:block">
+              {selected === "auto"
+                ? `fails over: ${models.map((m) => m.label).join(" → ") || "no providers"}`
+                : activeModel
+                  ? `${activeModel.label} (${activeModel.model})`
+                  : ""}
+            </span>
+            <button
+              onClick={newChat}
+              className="rounded-xl bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-neutral-700"
+            >
+              + New Chat
+            </button>
+          </div>
+        </header>
 
-      <div className="flex-1 space-y-3 overflow-y-auto pb-4">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-y-auto">
         {messages.length === 0 && !stream && (
-          <p className="mt-16 text-center text-sm text-neutral-500">
-            Say something — the assistant answers in your language
-            (English / বাংলা / Banglish), remembers what you tell it, and follows
-            your uploaded skills.
-          </p>
-        )}
-        {messages.map((m) => (
-          <div
-            key={m.client_id}
-            className={
-              m.role === "user"
-                ? "ml-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-sky-900/60 px-4 py-2 text-sm"
-                : "mr-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-neutral-800 px-4 py-2 text-sm"
-            }
-          >
-            {m.content}
+          <div className="flex flex-1 flex-col items-center justify-center px-4 pb-24">
+            <div className="mb-6 h-14 w-14 rounded-full bg-gradient-to-br from-indigo-400 via-sky-300 to-emerald-200 shadow-lg shadow-indigo-100" />
+            <h1 className="text-center text-2xl font-semibold text-neutral-900">
+              {greeting ? `${greeting}, Zonaed` : "Welcome, Zonaed"}
+            </h1>
+            <p className="mt-1 text-center text-sm text-neutral-500">
+              How can I assist you today?
+            </p>
           </div>
-        ))}
-        {stream && (
-          <div className="mr-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-neutral-800 px-4 py-2 text-sm">
-            {stream.text || "…"}
-            {stream.provider && (
-              <span className="ml-2 align-middle text-[10px] text-neutral-500">{stream.provider}</span>
+        )}
+        {messages.length > 0 && (
+          <div className="mx-auto w-full max-w-3xl space-y-3 px-6 pb-4">
+            {messages.map((m) => (
+              <div
+                key={m.client_id}
+                className={
+                  m.role === "user"
+                    ? "ml-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-indigo-600 px-4 py-2 text-sm text-white"
+                    : "mr-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-neutral-100 px-4 py-2 text-sm text-neutral-800"
+                }
+              >
+                {m.content}
+              </div>
+            ))}
+            {stream && (
+              <div className="mr-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-neutral-100 px-4 py-2 text-sm text-neutral-800">
+                {stream.text || "…"}
+                {stream.provider && (
+                  <span className="ml-2 align-middle text-[10px] text-neutral-400">{stream.provider}</span>
+                )}
+              </div>
             )}
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
+            )}
+            <div ref={bottomRef} />
           </div>
         )}
-        {error && (
-          <div className="rounded-lg border border-red-900 bg-red-950/60 px-4 py-2 text-sm text-red-300">{error}</div>
+        {messages.length === 0 && !stream && error && (
+          <div className="mx-auto w-full max-w-3xl px-6 pb-2">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
+          </div>
         )}
-        <div ref={bottomRef} />
       </div>
 
       <form
@@ -246,39 +349,63 @@ export default function ChatPage() {
           e.preventDefault();
           void send(input);
         }}
-        className="flex items-end gap-2 border-t border-neutral-800 py-3"
+        className="mx-auto w-full max-w-3xl px-6 pb-5"
       >
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              void send(input);
-            }
-          }}
-          rows={1}
-          placeholder="Type a message…  (Enter to send, Shift+Enter for a new line)"
-          className="max-h-40 flex-1 resize-y rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
-        />
-        {busy ? (
-          <button
-            type="button"
-            onClick={() => abortRef.current?.abort()}
-            className="rounded-xl bg-red-900/70 px-4 py-2 text-sm text-red-100 hover:bg-red-800"
-          >
-            Stop
-          </button>
-        ) : (
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            className="rounded-xl bg-sky-700 px-4 py-2 text-sm text-white hover:bg-sky-600 disabled:opacity-40"
-          >
-            Send
-          </button>
-        )}
+        <div className="rounded-2xl border border-neutral-200 bg-white shadow-lg shadow-neutral-100">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send(input);
+              }
+            }}
+            rows={2}
+            placeholder="Initiate a query or send a command to the AI…  (Enter to send)"
+            className="max-h-40 w-full resize-y rounded-t-2xl bg-transparent px-4 pb-1 pt-3 text-sm outline-none placeholder:text-neutral-400"
+          />
+          <div className="flex items-center justify-between gap-2 px-3 pb-2.5">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setDeepDraft((v) => !v)}
+                title="Plan an outline first, then draft from it (§5.1 chain-of-draft)"
+                className={`rounded-full border px-3 py-1 text-xs transition ${
+                  deepDraft
+                    ? "border-indigo-300 bg-indigo-50 text-indigo-600"
+                    : "border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50"
+                }`}
+              >
+                ✦ Deep Draft
+              </button>
+              <span className="hidden rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-400 sm:block">
+                Memory on
+              </span>
+            </div>
+            {busy ? (
+              <button
+                type="button"
+                onClick={() => abortRef.current?.abort()}
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600"
+                aria-label="Stop"
+              >
+                ■
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!input.trim()}
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-30"
+                aria-label="Send"
+              >
+                ➤
+              </button>
+            )}
+          </div>
+        </div>
       </form>
-    </main>
+      </main>
+    </div>
   );
 }
