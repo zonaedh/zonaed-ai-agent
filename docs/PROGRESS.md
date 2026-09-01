@@ -370,6 +370,47 @@ priority at a time, verified against §8 before moving on.
 
 ## 12. Nice-to-haves (voice input, calendar sync, command palette)
 
+- [x] `lib/calendar/ics.ts` — pure RFC 5545 module: `buildIcs` (VCALENDAR/
+      VEVENT, UID=`client_id@zonaed.ai`, UTC `YYYYMMDDTHHMMSSZ` DTSTART,
+      STATUS:COMPLETED, TRANSP:TRANSPARENT, TEXT escaping of `\;\,` `\n`,
+      CRLF line endings, 75-octet folding) and `parseIcs` (CRLF/LF, folded
+      continuation unfolding, DATE + DATE-TIME + floating (=UTC) values,
+      TEXT unescape incl. third-party `\n`, STRUCTURED tolerance: malformed
+      blocks dropped and counted, never throws)
+- [x] `lib/voice/speech.ts` — Web Speech API wrapper with injectable
+      `windowLike` seam for offline testing: `speechSupported`, `cleanTranscript`
+      (whitespace-collapse + capitalize), `startListening` (typed engine
+      adapter, result/error/end wiring, no-speech → empty result, unsupported
+      → no-throw error path, returns stop handle)
+- [x] `lib/navigation.ts` — single-source route registry (`NAV_LINKS`) +
+      `buildPaletteItems` so the hub and command palette cannot drift apart
+- [x] `app/components/CalendarTools.tsx` — Export `.ics` (live Dexie store →
+      buildIcs → blob download `zonaed-tasks.ics`) and Import `.ics`
+      (parseIcs → `createTask` with title+due-at dedupe so re-import cannot
+      duplicate), with import/export status message
+- [x] `app/components/VoiceButton.tsx` — mic toggle wired into the `/tasks`
+      title field (final transcript → setTitle); disabled + explanatory title
+      + no-throw when the browser lacks SpeechRecognition; pulsing while
+      listening
+- [x] `app/components/CommandPalette.tsx` — Ctrl/⌘+K overlay (mounted once in
+      the root layout): typeahead over `buildPaletteItems` (quick actions —
+      New task quick capture, Home — + all nav links), arrow/Enter/Esc keys,
+      mousedown-backdrop close, ↓↑ hint footer
+- [x] `app/page.tsx` — hub now reads `NAV_LINKS` from `lib/navigation.ts`
+      (single source) and shows a Ctrl/⌘+K hint badge; `app/layout.tsx`
+      mounts the palette
+- [x] `scripts/verify-nice.mts` + npm `verify:nice` — 23/23 checks pass
+      (5 buildIcs, 5 parseIcs incl. round-trip/folding/unescape/tolerance,
+      5 speech incl. fake-engine result flow + graceful unsupported, 2
+      palette registry matches NAV_LINKS, 6 wiring/gating incl. hub uses
+      single source, package script)
+- [x] Verification: `tsc --noEmit`, `eslint` (max-warnings 0), `next build`
+      (exit 0, all routes present), full suite re-run — auth, export 12/12,
+      intelligence 16/16, learn 27/27, nice 23/23, push 22/22, pwa 10/10,
+      search 15/15, skills 12/12, sync 22/22, tasks 21/21, tools 22/22 —
+      all green. Two older verifiers updated for the hub refactor (hub link
+      checks now read lib/navigation.ts). Committed.
+
 ---
 
 **Not in this repo (extension-only, separate repo):** WhatsApp Lead CRM &

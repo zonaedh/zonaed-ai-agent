@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import SyncIndicator from "./components/SyncIndicator";
 import PwaLinks from "./components/PwaLinks";
 import PinGate from "./components/PinGate";
+import CommandPalette from "./components/CommandPalette";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
           <SyncIndicator />
         </PinGate>
+        <CommandPalette />
       </body>
     </html>
   );

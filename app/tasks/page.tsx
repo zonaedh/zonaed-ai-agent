@@ -26,6 +26,8 @@ import {
   rescheduleTask,
   setTaskCompleted,
 } from "@/lib/tasks/repo";
+import VoiceButton from "@/app/components/VoiceButton";
+import CalendarTools from "@/app/components/CalendarTools";
 
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"] as const;
 const FREQS: Array<{ value: RecurrenceFreq | "none"; label: string }> = [
@@ -149,15 +151,20 @@ export default function TasksPage() {
         Offline-first checklist. Completing a recurring task schedules its next occurrence automatically.
       </p>
 
-      <form onSubmit={onSubmit} className="mb-8 space-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-        <input
-          ref={titleRef}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="What needs doing?"
-          aria-label="Task title"
-          className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-zinc-700"
-        />
+      <CalendarTools />
+
+      <form onSubmit={onSubmit} className="mb-8 mt-4 space-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="flex items-center gap-2">
+          <input
+            ref={titleRef}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="What needs doing?"
+            aria-label="Task title"
+            className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-zinc-700"
+          />
+          <VoiceButton onResult={(text) => setTitle(text)} />
+        </div>
         <input
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

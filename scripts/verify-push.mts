@@ -231,7 +231,7 @@ await check("env wiring: VAPID keys in all three schema/env files", () => {
 });
 
 await check("settings page is registered in the app hub", () => {
-  assert.match(read("app/page.tsx"), /\/settings/);
+  assert.match(read("lib/navigation.ts"), /\/settings/);
 });
 
 await check("web-push dependency is installed", async () => {

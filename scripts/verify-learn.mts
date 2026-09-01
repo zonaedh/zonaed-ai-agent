@@ -309,7 +309,7 @@ await check("memory page: review queue with approve/edit/discard + live list", (
 });
 
 await check("hub links /memory", () => {
-  const src = readFileSync(join(ROOT, "app/page.tsx"), "utf8");
+  const src = readFileSync(join(ROOT, "lib/navigation.ts"), "utf8");
   assert.ok(src.includes('href: "/memory"'));
 });
 
