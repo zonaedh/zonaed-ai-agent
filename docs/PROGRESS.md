@@ -13,8 +13,12 @@ priority at a time, verified against §8 before moving on.
       (`supabase/migrations/0001_initial_schema.sql`)
 - [x] CI: build + typecheck + secret-scan (`.github/workflows/ci.yml`)
 - [x] `.env.example` documenting all required keys
-- [ ] **Manual (account access required):** provision the Supabase project,
-      run the migration, enable anonymous auth, set Vercel env vars
+- [x] **Provisioned live project:** `zonaed-ai-agent` (ref `pdgsuwcyxmocloulevvm`,
+      ap-south-1, `ACTIVE_HEALTHY`); anonymous auth enabled; migrations applied
+      via `scripts/apply-migrations.mjs` (Management API SQL endpoint); real
+      keys in `.env.local`. Vercel env vars still pending (deploy step).
+      Note: `supabase db push` pooler auth fails with the stored DB password —
+      use `scripts/apply-migrations.mjs` for future migration pushes.
 
 ## 1. Auth model (PIN gate + Supabase anonymous session + RLS)
 - [x] PIN device gate module (PBKDF2-SHA256, salted, local-only, never leaves
@@ -31,9 +35,10 @@ priority at a time, verified against §8 before moving on.
 - [x] Token logic checks: `node scripts/verify-auth.mjs` (5/5 pass);
       live HTTP smoke: `node scripts/smoke-verify.mjs` (4/4 pass)
 - [ ] PIN unlock UI (client component wiring setPin/verifyPin + session fetch)
-- [ ] End-to-end verification against a live Supabase project (blocked on
-      provisioning: `supabase login` not persisted; needs login completed or
-      a personal access token)
+- [x] End-to-end verification against the live Supabase project:
+      `node scripts/verify-auth-e2e.mjs` — anonymous sign-in (2 distinct
+      users), RLS sets `user_id` from `auth.uid()`, owner read, cross-user
+      isolation (0 rows), unauthenticated 0 rows
 
 ## 2. Dexie ↔ Supabase sync engine (LWW conflict resolution, soft deletes, sync status UI)
 
