@@ -15,6 +15,7 @@
     "verify:search": "tsx scripts/verify-search.mts",
     "verify:export": "tsx scripts/verify-export.mts",
     "verify:tasks": "tsx scripts/verify-tasks.mts",
+    "verify:tools": "tsx scripts/verify-tools.mts",
     "verify:pwa": "tsx scripts/verify-pwa.mts",
     "generate:pwa": "node scripts/generate-pwa-assets.mjs",
     "smoke:chat": "node --env-file=.env.local --import tsx scripts/smoke-chat.mjs",

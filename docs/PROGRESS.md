@@ -224,6 +224,40 @@ priority at a time, verified against §8 before moving on.
 
 ## 9. Webapp report/analysis tools (§5.2) — `/report`, `/marketing-plan`, `/competitor-spy`, `/outreach`
 
+- [x] `lib/tools/crawl.ts` — server-side fetch + extraction: URL hardening
+      (bare-domain https upgrade, http/https-only, SSRF guard rejecting
+      localhost/.internal/.local/.local + private/loopback/link-local/CGNAT IP
+      literals incl. `169.254.169.254` metadata), 12s timeout + 750 KB byte cap
+      streaming read, HTML → text profile (title, meta description, h1–h3,
+      entity-decoded whitespace-collapsed 12 KB-capped body text), same-origin
+      link discovery (asset extensions skipped, deduped, fragments dropped),
+      `crawlSite` (bounded page count, per-page failure tolerated + reported)
+- [x] `lib/tools/prompts.ts` — tool registry: report (audit + client proposal,
+      single page), marketing-plan (site crawl, 6 pages), competitor-spy
+      (positioning + exploitable gaps, single page), outreach (LinkedIn note,
+      InMail, cold email, follow-up; single page). All system prompts embed the
+      §5.1 anti-cliché rules; user prompts render crawled pages + user notes
+- [x] `app/api/tools/generate/route.ts` — POST {tool, url, notes} →
+      requireSession → rate limit 6/min (heavy: crawl + generation) →
+      validate + crawl → SSE stream via the §5.1 provider failover stack
+      (meta with fetched page list → deltas → done with scanOutput report);
+      422 when the target page is unfetchable
+- [x] `app/components/ToolRunner.tsx` — shared client: URL + optional notes
+      form, authedFetch POST, SSE parsing (crawl/generate phases, Stop button),
+      live result pane with Copy + Download .md, page/provider meta line,
+      anti-cliché warning when the scan is unclean
+- [x] Pages: `/report`, `/marketing-plan`, `/competitor-spy`, `/outreach`
+      (thin ToolRunner wrappers); `app/page.tsx` replaced the Next.js scaffold
+      with an app hub linking all modules
+- [x] Verification: `npm run verify:tools` 22/22 (URL hardening incl. SSRF
+      rejections, extraction/script-strip/caps, link rules, fetchPage caps,
+      crawl tolerance, registry + prompt rules); `tsc --noEmit`, `eslint`
+      (max-warnings 0), `next build` (all four routes + API prerendered/
+      dynamic), `verify:sync` 22/22, `verify:search` 15/15, `verify:skills`
+      12/12, `verify:export` 12/12, `verify:intelligence` 16/16,
+      `verify:tasks` 21/21, `verify:pwa` 10/10, `verify:auth` — all green.
+      Committed.
+
 ## 10. Web Push (reminders + digest)
 
 ## 11. Day-by-day chat history learning (§5.4) — opt-in job + review queue
