@@ -195,11 +195,20 @@ await check("migration 0002: subscriptions table, RLS, tasks.reminded_at", () =>
   assert.match(sql, /add column if not exists reminded_at timestamptz/);
 });
 
-await check("vercel.json schedules /api/push/cron every minute", () => {
+await check("push cron scheduling: Hobby-legal Vercel cron + 5-min GitHub Actions pings", () => {
+  // Vercel Hobby only permits daily cron jobs, so the frequent pings live in
+  // GitHub Actions (.github/workflows/reminders.yml) and vercel.json carries
+  // a daily fallback schedule for /api/push/cron.
   const cfg = JSON.parse(read("vercel.json")) as { crons?: Array<{ path?: string; schedule?: string }> };
   const cron = (cfg.crons ?? []).find((c) => c.path === "/api/push/cron");
   assert.ok(cron, "no cron entry for /api/push/cron");
-  assert.equal(cron.schedule, "* * * * *");
+  assert.notEqual(cron.schedule, "* * * * *", "every-minute schedule is rejected on Vercel Hobby");
+  assert.match(cron.schedule, /^\d+ \d+ \* \* \*$/, "Vercel cron must be daily (Hobby plan limit)");
+  const wf = read(".github/workflows/reminders.yml");
+  assert.match(wf, /cron: '\*\/5 \* \* \* \*'/, "GitHub Actions must ping every 5 minutes");
+  assert.match(wf, /\$\{\{ secrets\.CRON_SECRET \}\}/, "workflow must authenticate with CRON_SECRET");
+  assert.match(wf, /secrets\.PROD_URL/, "workflow must target the deployed PROD_URL");
+  assert.doesNotMatch(wf, /-X POST/, "cron route is GET-only");
 });
 
 await check("client lib: permission flow, subscription post, unsubscribe", () => {

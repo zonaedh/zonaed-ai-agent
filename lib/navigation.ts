@@ -13,6 +13,7 @@ export interface NavLink {
 }
 
 export const NAV_LINKS: NavLink[] = [
+  { href: "/chat", title: "Chat", description: "Talk to the AI — streams, remembers, follows your skills" },
   { href: "/tasks", title: "Tasks", description: "CRUD, recurrence, due-date highlighting" },
   { href: "/memory", title: "Memory", description: "Long-term memory + chat-learning review queue" },
   { href: "/skills", title: "Skills", description: "Upload .md skills, versioned, injected into chat" },
