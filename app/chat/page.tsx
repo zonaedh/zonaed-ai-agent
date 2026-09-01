@@ -12,6 +12,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { listLive, newClientId, putLocal, softDeleteLocal } from "@/lib/db/repo";
 import type { ChatMessageRow, ExampleRow, MemoryRow, SkillRow } from "@/lib/db/types";
@@ -179,7 +180,8 @@ export default function ChatPage() {
           body: JSON.stringify({
             messages: payloadMessages,
             preamble,
-            model: selected,
+            // "auto" = failover chain; only send an explicit model when pinned.
+            model: selected === "auto" ? undefined : selected,
             chainOfDraft: deepDraft || undefined,
           }),
           signal: controller.signal,
@@ -305,7 +307,7 @@ export default function ChatPage() {
       </div>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-2 px-3 py-2 md:gap-3 md:px-6 md:py-3">
+        <header className="flex min-w-0 items-center gap-2 px-3 py-2 md:gap-3 md:px-6 md:py-3">
           <button
             onClick={() => setMenuOpen(true)}
             aria-label="Open chat history"
@@ -313,11 +315,16 @@ export default function ChatPage() {
           >
             ☰
           </button>
-          <div className="relative min-w-0 flex-1 sm:flex-none">
+          <div className="relative min-w-0 flex-1 overflow-hidden sm:flex-none">
             <select
               value={selected}
               onChange={(e) => pickModel(e.target.value)}
-              className="appearance-none rounded-xl border border-neutral-200 bg-white py-1.5 pl-9 pr-7 text-sm font-medium shadow-sm outline-none hover:border-neutral-300 sm:pr-8"
+              title={
+                selected === "auto"
+                  ? "Auto Route — fails over to the next available model"
+                  : (activeModel ? `${activeModel.label} · ${activeModel.model}` : selected)
+              }
+              className="w-full max-w-[44vw] appearance-none rounded-xl border border-neutral-200 bg-white py-1.5 pl-9 pr-7 text-sm font-medium shadow-sm outline-none hover:border-neutral-300 sm:max-w-[13rem] md:max-w-sm md:pr-8"
             >
               <option value="auto">⚡ Auto Route</option>
               {["groq", "gemini", "deepseek", "openrouter"].map((pid) => {
@@ -338,8 +345,8 @@ export default function ChatPage() {
             <span className="pointer-events-none absolute left-3 top-1.5 text-sm">🤖</span>
             <span className="pointer-events-none absolute right-2.5 top-2 text-xs text-neutral-400 sm:right-3">▾</span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-xs text-neutral-400 sm:block">
+          <div className="flex shrink-0 items-center gap-2 md:gap-3">
+            <span className="hidden max-w-[15rem] truncate text-xs text-neutral-400 md:block">
               {selected === "auto"
                 ? `fails over: ${
                     [...new Set(models.map((m) => m.providerId ?? m.id))]
@@ -352,7 +359,7 @@ export default function ChatPage() {
             </span>
             <button
               onClick={newChat}
-              className="whitespace-nowrap rounded-xl bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-neutral-700 md:px-4"
+              className="shrink-0 whitespace-nowrap rounded-xl bg-neutral-900 px-2.5 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-neutral-700 md:px-4"
             >
               + New Chat
             </button>
@@ -369,6 +376,26 @@ export default function ChatPage() {
             <p className="mt-1 text-center text-sm text-neutral-500">
               How can I assist you today?
             </p>
+            {/* One-tap navigation to the report tools + daily tasks (chat landing). */}
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-2 px-4">
+              {(
+                [
+                  ["Competitor Spy", "/competitor-spy", "🔍"],
+                  ["Marketing Plan", "/marketing-plan", "📈"],
+                  ["Outreach", "/outreach", "✉️"],
+                  ["Daily Tasks", "/tasks", "✅"],
+                ] as const
+              ).map(([label, href, icon]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3.5 py-2 text-sm font-medium text-neutral-600 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
+                >
+                  <span aria-hidden="true">{icon}</span>
+                  {label}
+                </Link>
+              ))}
+            </div>
           </div>
         )}
         {messages.length > 0 && (

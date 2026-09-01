@@ -12,9 +12,11 @@ import { BANNED_WORDS, sanitizeDashes, scanOutput } from "../lib/ai/anti-cliche"
 import { buildPreamble, matchMemories, matchSkills } from "../lib/ai/matching";
 import { buildSystemPrompt } from "../lib/ai/system-prompt";
 import {
+  availableModels,
   availableProviders,
   PROVIDERS,
   ProviderError,
+  resolveConfiguredModel,
   shouldFailover,
   streamFromProvider,
   streamWithFailover,
@@ -23,7 +25,7 @@ import type { ExampleRow, MemoryRow, SkillRow } from "../lib/db/types";
 
 let passed = 0;
 let finished = 0;
-const TOTAL = 16;
+const TOTAL = 17;
 /** Only the async checks contribute to `finished`; the rest run synchronously. */
 const ASYNC_TOTAL = 3;
 
@@ -271,6 +273,27 @@ async function runAllExhausted() {
 }
 
 check("providers: all providers exhausted → aggregated error", runAllExhausted);
+
+check("models: availableModels filters placeholders/missing keys; resolveConfiguredModel rejects auto/unknown and pins known ids", () => {
+  const env = {
+    GROQ_API_KEY: "k",
+    GEMINI_API_KEY: "gk",
+    DEEPSEEK_API_KEY: undefined,
+    OPENROUTER_API_KEY: "placeholder-x",
+  };
+  const models = availableModels(env);
+  assert.ok(models.length > 0, "no models exposed for config with a live key");
+  assert.ok(models.every((m) => m.providerId !== "openrouter"), "placeholder key leaked openrouter models");
+  assert.ok(models.every((m) => m.providerId !== "deepseek"), "missing key leaked deepseek models");
+  const groqModels = models.filter((m) => m.providerId === "groq");
+  assert.ok(groqModels.some((m) => m.model === "openai/gpt-oss-120b"), "groq default model missing");
+  assert.ok(models.some((m) => m.providerId === "gemini" && m.model === "gemini-3.7-flash"), "gemini default missing");
+  // "auto" must never resolve as a pin — the route relies on this guard.
+  assert.equal(resolveConfiguredModel("auto", env), null, "auto must not resolve to a pinned model");
+  assert.equal(resolveConfiguredModel("nope:fake", env), null, "unknown id must not resolve");
+  const pinned = resolveConfiguredModel(groqModels[0].id, env);
+  assert.ok(pinned && pinned.model === groqModels[0].model, "known id must pin its model");
+});
 
 // The async checks above (ASYNC_TOTAL = 3) settle and trigger a deterministic
 // process.exit() in maybeDone — no keep-alive needed.

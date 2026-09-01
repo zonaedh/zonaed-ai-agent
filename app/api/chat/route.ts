@@ -149,7 +149,8 @@ export async function POST(request: NextRequest) {
   let providers = availableProviders(process.env);
   const modelParam = typeof body.model === "string" ? body.model : "";
   const providerParam = typeof body.provider === "string" ? body.provider : "auto";
-  if (modelParam) {
+  // "auto" from the dashboard always means the failover chain — never a pin.
+  if (modelParam && modelParam !== "auto") {
     const pinned = resolveConfiguredModel(modelParam, process.env);
     if (!pinned) {
       return Response.json(
