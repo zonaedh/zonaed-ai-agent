@@ -202,8 +202,10 @@ await check("push cron scheduling: Hobby-legal Vercel cron + 5-min GitHub Action
   const cfg = JSON.parse(read("vercel.json")) as { crons?: Array<{ path?: string; schedule?: string }> };
   const cron = (cfg.crons ?? []).find((c) => c.path === "/api/push/cron");
   assert.ok(cron, "no cron entry for /api/push/cron");
-  assert.notEqual(cron.schedule, "* * * * *", "every-minute schedule is rejected on Vercel Hobby");
-  assert.match(cron.schedule, /^\d+ \d+ \* \* \*$/, "Vercel cron must be daily (Hobby plan limit)");
+  const schedule = cron.schedule;
+  assert.ok(schedule, "cron entry has no schedule");
+  assert.notEqual(schedule, "* * * * *", "every-minute schedule is rejected on Vercel Hobby");
+  assert.match(schedule, /^\d+ \d+ \* \* \*$/, "Vercel cron must be daily (Hobby plan limit)");
   const wf = read(".github/workflows/reminders.yml");
   assert.match(wf, /cron: '\*\/5 \* \* \* \*'/, "GitHub Actions must ping every 5 minutes");
   assert.match(wf, /\$\{\{ secrets\.CRON_SECRET \}\}/, "workflow must authenticate with CRON_SECRET");
