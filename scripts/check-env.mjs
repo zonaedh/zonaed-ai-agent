@@ -32,14 +32,16 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  // AI providers (cloud-only per plan §0)
+  // AI providers (cloud-only per plan §0). DeepSeek is optional — the
+  // failover chain skips providers whose key is absent.
   GROQ_API_KEY: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
-  DEEPSEEK_API_KEY: z.string().min(1),
+  DEEPSEEK_API_KEY: z.string().min(1).optional(),
   OPENROUTER_API_KEY: z.string().min(1),
-  // Rate limiting (Upstash Redis)
-  UPSTASH_REDIS_REST_URL: z.url(),
-  UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
+  // Rate limiting (Upstash Redis) — optional: rate limiting degrades to
+  // allow-all with a console warning when these are absent.
+  UPSTASH_REDIS_REST_URL: z.url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
   // Sync token signing
   SYNC_TOKEN_SECRET: z.string().min(32),
   // Cron
