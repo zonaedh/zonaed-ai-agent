@@ -17,9 +17,23 @@ priority at a time, verified against §8 before moving on.
       run the migration, enable anonymous auth, set Vercel env vars
 
 ## 1. Auth model (PIN gate + Supabase anonymous session + RLS)
-- [ ] PIN device gate (hashed, local-only, never sent to providers)
-- [ ] Supabase anonymous session; RLS-authorized data access
-- [ ] HMAC session tokens with server-side `exp` validation
+- [x] PIN device gate module (PBKDF2-SHA256, salted, local-only, never leaves
+      the device) — `lib/auth/pin.ts`
+- [x] Supabase client bootstrap + anonymous session (`ensureSupabaseSession`)
+      — `lib/auth/supabase.ts`
+- [x] HMAC session tokens with server-side `exp` validation
+      (`lib/auth/tokens.ts`, `POST /api/auth/session`, `GET /api/auth/verify`,
+      guard in `lib/auth/guards.ts`) — verified live: expired → 401,
+      tampered → 403
+- [x] Scoped revocable extension sync tokens (`zsy_…`, SHA-256-hashed at
+      rest) + `sync_tokens` migration (`0002_sync_tokens.sql`) +
+      `requireSyncToken` guard for `/api/sync/*`
+- [x] Token logic checks: `node scripts/verify-auth.mjs` (5/5 pass);
+      live HTTP smoke: `node scripts/smoke-verify.mjs` (4/4 pass)
+- [ ] PIN unlock UI (client component wiring setPin/verifyPin + session fetch)
+- [ ] End-to-end verification against a live Supabase project (blocked on
+      provisioning: `supabase login` not persisted; needs login completed or
+      a personal access token)
 
 ## 2. Dexie ↔ Supabase sync engine (LWW conflict resolution, soft deletes, sync status UI)
 
