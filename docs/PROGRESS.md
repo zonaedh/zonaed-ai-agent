@@ -41,6 +41,32 @@ priority at a time, verified against §8 before moving on.
       isolation (0 rows), unauthenticated 0 rows
 
 ## 2. Dexie ↔ Supabase sync engine (LWW conflict resolution, soft deletes, sync status UI)
+- [x] Dexie schema — `client_id`-keyed syncable stores + `sync_state` watermarks
+      + `conflict_archive` (`lib/db/client.ts`, types in `lib/db/types.ts`)
+- [x] CRUD repo: every write stamps `updated_at` + `dirty`; deletes are always
+      tombstones (`lib/db/repo.ts`)
+- [x] Pure sync engine: pull (watermark + 2s overlap), push (batched upsert on
+      `user_id,client_id`), LWW by `updated_at`, losing versions archived to
+      `conflict_archive` — never dropped (`lib/sync/engine.ts`)
+- [x] Migration `0003_lww_updated_at.sql`: trigger preserves client-supplied
+      `updated_at` (LWW precondition); verified live via SQL round-trip
+- [x] Scheduler + zustand status store: auto-sync on load/online/60s interval,
+      non-overlapping runs (`lib/sync/scheduler.ts`)
+- [x] Sync status UI: fixed status pill, click = sync now, pending counter,
+      offline/error states (`app/components/SyncIndicator.tsx`, mounted in layout)
+- [x] Extension sync API: `GET /api/sync/pull`, `POST /api/sync/push` —
+      `requireSyncToken`-scoped, user_id forced from token, server-side LWW
+      (older/equal pushes reported as `skipped`, never applied)
+- [x] Live E2E vs real Supabase (`npm run verify:sync`, fake-indexeddb + tsx):
+      22/22 pass — push preserves LWW timestamps, pull applies remote edits,
+      stale local edit loses + archived, tombstones propagate, getLive/listLive
+      hide deleted, cross-user RLS isolation, cleanup
+- [x] Migration runner upgrade: `schema_migrations` bookkeeping, idempotent
+      re-runs, legacy 0001/0002 recorded
+- [x] Live API smoke (`npm run smoke:sync`, needs running server):
+      push → applied:1, stale push → skipped (server-side LWW), pull returns
+      row, missing token → 401, garbage token → 403, revoked token → 403
+      (6/6 pass). Service-role key provisioned into `.env.local`.
 
 ## 3. Intelligence & persona stack port into `/api/chat` (tone-profiler, persona/punctuation, memory-skills injector, anti-cliché filter, chain-of-draft; cloud providers only)
 

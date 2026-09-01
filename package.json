@@ -7,7 +7,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:auth": "node scripts/verify-auth.mjs",
+    "verify:sync": "tsx --env-file=.env.local scripts/verify-sync.mts",
+    "smoke:auth": "node --env-file=.env.local scripts/smoke-verify.mjs",
+    "smoke:sync": "node --env-file=.env.local scripts/smoke-sync-api.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
@@ -26,7 +30,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "fake-indexeddb": "^6.2.5",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }
