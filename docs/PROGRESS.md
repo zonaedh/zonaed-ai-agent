@@ -70,6 +70,34 @@ priority at a time, verified against §8 before moving on.
 
 ## 3. Intelligence & persona stack port into `/api/chat` (tone-profiler, persona/punctuation, memory-skills injector, anti-cliché filter, chain-of-draft; cloud providers only)
 
+- [x] `lib/ai/tone.ts` — Bengali Unicode + Banglish (transliteration) detection,
+      three language modes: `english` / `banglish` / `bengali`; per-message,
+      no user setting needed (§5.1 `tone-profiler` port)
+- [x] `lib/ai/anti-cliche.ts` — em/en-dash ban + sanitize, banned word list
+      (delve, testament, tapestry, embark, furthermore, moreover, beacon,
+      game-changer) with word-boundary matching; `scanOutput` post-generation
+      check reported in the SSE `done` event (§5.1 filter port)
+- [x] `lib/ai/matching.ts` — shared preamble builder: keyword-triggered +
+      always-on skills, relevance-scored memories (not a blind dump), few-shot
+      examples (§5.1 `memory-skills.ts` port; §5.3 injection reuses it)
+- [x] `lib/ai/system-prompt.ts` — persona → language-mode rules → anti-cliché
+      rules → preamble → chain-of-draft instructions (§5.1 `system-prompt` port)
+- [x] `lib/ai/providers.ts` — cloud-only provider layer (Groq, Gemini, DeepSeek,
+      OpenRouter): OpenAI-compatible + Gemini stream parsing, 429/503/network
+      failover (extension `quota-router` behavior), fail-fast when a provider
+      key is missing, aggregated error when all fail. Keys are placeholders —
+      wiring real keys is a deploy step, not a code step
+- [x] `app/api/chat/route.ts` — SSE streaming pipeline in plan §5.1 order:
+      requireSession guard → rate limit (Upstash fixed window, fail-open,
+      `lib/rate-limit.ts`) → tone profile → system prompt → provider stream →
+      post-scan. Client sends `preamble` (assembled from Dexie via matching.ts,
+      works offline), optional `chainOfDraft` / `approvedOutline` (mutually
+      exclusive, enforced)
+- [x] Verification: `npm run verify:intelligence` 16/16 (tone, anti-cliché,
+      matching, system prompt, provider failover + SSE parsing on mock streams);
+      `npm run smoke:chat` 4/4 live (401 / 400 / 503 / mutually-exclusive 400).
+      tsc + eslint + build clean
+
 ## 4. Skill/Knowledge upload system (§5.3) — `/skills` page, versioned uploads, injection logic
 
 ## 5. iOS PWA fixes (viewport-fit=cover, split icon purposes, splash screens)
