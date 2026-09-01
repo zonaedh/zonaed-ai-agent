@@ -1,11 +1,12 @@
 // ============================================================================
 // GET /api/models — which AI models the signed-in user can pick in the chat
-// dashboard. Returns only ids/labels/model names (never keys), in failover
-// order. The client also shows an "Auto" option that uses the same order.
+// dashboard. Returns every live option across all configured providers (ids,
+// labels, model names — never keys), in failover order. The client also shows
+// an "Auto" option that uses the failover chain.
 // ============================================================================
 import type { NextRequest } from "next/server";
 import { requireSession } from "@/lib/auth/guards";
-import { availableProviders } from "@/lib/ai/providers";
+import { availableModels, availableProviders, PROVIDERS } from "@/lib/ai/providers";
 
 export const dynamic = "force-dynamic";
 
@@ -19,5 +20,11 @@ export async function GET(request: NextRequest) {
     label: p.label,
     model: p.model,
   }));
-  return Response.json({ providers });
+  const models = availableModels(process.env).map((m) => ({
+    id: m.id,
+    providerId: m.providerId,
+    label: `${PROVIDERS[m.providerId].label} · ${m.label}`,
+    model: m.model,
+  }));
+  return Response.json({ providers, models });
 }

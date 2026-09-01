@@ -45,3 +45,34 @@ body {
 .ios-safe-bottom-float {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
 }
+
+/* ---------------------------------------------------------------------------
+   Mobile focus-zoom lock (user-reported issue, Priority 12 follow-up).
+   iOS Safari auto-zooms into any form control whose computed font-size is
+   below 16px. Forcing 16px (>= the iOS trigger threshold) on every control
+   prevents that jump. `touch-action: manipulation` also kills the double-tap
+   zoom gesture on controls/links. No user-scalable=no here — WCAG-friendly:
+   users can still pinch-zoom the page itself.
+   --------------------------------------------------------------------------- */
+input,
+select,
+textarea {
+  font-size: 16px; /* iOS auto-zoom threshold */
+}
+@media (max-width: 767px) {
+  /* The app's Tailwind `text-sm` (14px) would otherwise win the cascade; on
+     small screens we need the control to *compute* to >= 16px or iOS zooms. */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+}

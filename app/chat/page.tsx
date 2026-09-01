@@ -21,6 +21,7 @@ import ChatSidebar, { type SessionSummary } from "./Sidebar";
 
 interface ModelInfo {
   id: string;
+  providerId?: string;
   label: string;
   model: string;
 }
@@ -80,9 +81,17 @@ export default function ChatPage() {
   useEffect(() => {
     let cancelled = false;
     void authedFetch("/api/models")
-      .then((r) => (r.ok ? r.json() : { providers: [] }))
-      .then((d: { providers?: ModelInfo[] }) => {
-        if (!cancelled) setModels(d.providers ?? []);
+      .then((r) => (r.ok ? r.json() : { providers: [], models: [] }))
+      .then((d: { providers?: ModelInfo[]; models?: ModelInfo[] }) => {
+        if (cancelled) return;
+        const list = d.models ?? d.providers ?? [];
+        setModels(list);
+        // A saved selection (localStorage) that is stale — e.g. pre-model-registry
+        // ids like "groq" — falls back to Auto Route. Runs in the async callback
+        // (not synchronously inside the effect body) to satisfy react-hooks/purity.
+        setSelected((prev) =>
+          prev !== "auto" && list.length > 0 && !list.some((m) => m.id === prev) ? "auto" : prev,
+        );
       })
       .catch(() => undefined);
     return () => {
@@ -170,7 +179,7 @@ export default function ChatPage() {
           body: JSON.stringify({
             messages: payloadMessages,
             preamble,
-            provider: selected,
+            model: selected,
             chainOfDraft: deepDraft || undefined,
           }),
           signal: controller.signal,
@@ -311,11 +320,20 @@ export default function ChatPage() {
               className="appearance-none rounded-xl border border-neutral-200 bg-white py-1.5 pl-9 pr-7 text-sm font-medium shadow-sm outline-none hover:border-neutral-300 sm:pr-8"
             >
               <option value="auto">⚡ Auto Route</option>
-              {models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label} · {m.model}
-                </option>
-              ))}
+              {["groq", "gemini", "deepseek", "openrouter"].map((pid) => {
+                const group = models.filter((m) => (m.providerId ?? m.id) === pid);
+                if (group.length === 0) return null;
+                const label = group[0].label.split(" · ")[0] ?? pid;
+                return (
+                  <optgroup key={pid} label={label}>
+                    {group.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label} · {m.model}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
             </select>
             <span className="pointer-events-none absolute left-3 top-1.5 text-sm">🤖</span>
             <span className="pointer-events-none absolute right-2.5 top-2 text-xs text-neutral-400 sm:right-3">▾</span>
@@ -323,7 +341,11 @@ export default function ChatPage() {
           <div className="flex items-center gap-3">
             <span className="hidden text-xs text-neutral-400 sm:block">
               {selected === "auto"
-                ? `fails over: ${models.map((m) => m.label).join(" → ") || "no providers"}`
+                ? `fails over: ${
+                    [...new Set(models.map((m) => m.providerId ?? m.id))]
+                      .map((pid) => pid[0].toUpperCase() + pid.slice(1))
+                      .join(" → ") || "no providers"
+                  }`
                 : activeModel
                   ? `${activeModel.label} (${activeModel.model})`
                   : ""}

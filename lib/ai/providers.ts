@@ -26,6 +26,17 @@ export interface ProviderConfig {
   protocol: "openai" | "gemini";
 }
 
+/** A selectable model within a provider (one provider can expose several). */
+export interface ModelOption {
+  /** Unique across providers, e.g. "groq:qwen3.8-27b". */
+  id: string;
+  providerId: ProviderId;
+  /** Short human label, e.g. "GPT-OSS 120B". */
+  label: string;
+  /** The actual model name sent to the provider API. */
+  model: string;
+}
+
 export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   groq: {
     id: "groq",
@@ -59,7 +70,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   openrouter: {
     id: "openrouter",
     label: "OpenRouter",
-    model: "meta-llama/llama-3.3-70b-instruct",
+    // Free auto-routing default (user preference): Nemotron 120B free tier.
+    model: "nvidia/nemotron-3-super-120b-a12b:free",
     baseUrl: "https://openrouter.ai/api/v1",
     headers: (k) => ({
       Authorization: `Bearer ${k}`,
@@ -68,6 +80,31 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     }),
     protocol: "openai",
   },
+};
+
+/**
+ * Selectable models per provider (live-verified with the project keys on this
+ * date). First entry per provider = that provider's default (used by auto
+ * failover). Retired/unavailable names are excluded:
+ *   * Groq llama-3.3 (404 model_not_found); Gemini 2.x / 3.1-flash exact names.
+ */
+export const MODEL_OPTIONS: Record<ProviderId, ModelOption[]> = {
+  groq: [
+    { id: "groq:gpt-oss-120b", providerId: "groq", label: "GPT-OSS 120B", model: "openai/gpt-oss-120b" },
+    { id: "groq:qwen3.8-27b", providerId: "groq", label: "Qwen 3.8 27B", model: "qwen/qwen3.8-27b" },
+    { id: "groq:qwen3.6-27b", providerId: "groq", label: "Qwen 3.6 27B", model: "qwen/qwen3.6-27b" },
+  ],
+  gemini: [
+    { id: "gemini:3.7-flash", providerId: "gemini", label: "3.7 Flash", model: "gemini-3.7-flash" },
+    { id: "gemini:3.6-flash", providerId: "gemini", label: "3.6 Flash", model: "gemini-3.6-flash" },
+    // Plain "gemini-3.1-flash" does not exist (404); the lite variant is live.
+    { id: "gemini:3.1-flash-lite", providerId: "gemini", label: "3.1 Flash Lite", model: "gemini-3.1-flash-lite" },
+  ],
+  deepseek: [{ id: "deepseek:chat", providerId: "deepseek", label: "DeepSeek Chat", model: "deepseek-chat" }],
+  openrouter: [
+    { id: "or:nemotron-120b-free", providerId: "openrouter", label: "Nemotron 120B (free)", model: "nvidia/nemotron-3-super-120b-a12b:free" },
+    { id: "or:minimax-m3-free", providerId: "openrouter", label: "Minimax M3 (free)", model: "minimax/minimax-m3:free" },
+  ],
 };
 
 const ENV_KEYS: Record<ProviderId, string> = {
@@ -85,6 +122,31 @@ export function availableProviders(env: Record<string, string | undefined>): Pro
   return FAILOVER_CHAIN.filter((id) => Boolean(env[ENV_KEYS[id]]) && !env[ENV_KEYS[id]]!.startsWith("placeholder")).map(
     (id) => PROVIDERS[id],
   );
+}
+
+/** All selectable models across providers that have a non-placeholder key. */
+export function availableModels(env: Record<string, string | undefined>): ModelOption[] {
+  const out: ModelOption[] = [];
+  for (const pid of FAILOVER_CHAIN) {
+    const key = env[ENV_KEYS[pid]];
+    if (!key || key.startsWith("placeholder")) continue;
+    out.push(...MODEL_OPTIONS[pid]);
+  }
+  return out;
+}
+
+/**
+ * Resolve a specific model option (e.g. "groq:qwen3.8-27b") to a ProviderConfig
+ * with that model pinned. Returns null when the provider key is missing or the
+ * model id is unknown.
+ */
+export function resolveConfiguredModel(
+  modelId: string,
+  env: Record<string, string | undefined>,
+): ProviderConfig | null {
+  const option = availableModels(env).find((o) => o.id === modelId);
+  if (!option) return null;
+  return { ...PROVIDERS[option.providerId], model: option.model };
 }
 // ---------------------------------------------------------------------------
 // Streaming + failover

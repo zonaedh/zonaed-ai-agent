@@ -22,7 +22,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { detectLanguageMode } from "@/lib/ai/tone";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { scanOutput, type OutputScan } from "@/lib/ai/anti-cliche";
-import { availableProviders, streamWithFailover, type ChatMessageInput } from "@/lib/ai/providers";
+import { availableProviders, resolveConfiguredModel, streamWithFailover, type ChatMessageInput } from "@/lib/ai/providers";
 import type { PreambleShape } from "@/lib/ai/validate";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +37,8 @@ interface ChatRequestBody {
   approvedOutline?: unknown;
   /** Optional provider id ("groq" | "gemini" | …). Absent or "auto" = failover chain. */
   provider?: unknown;
+  /** Optional exact model id (e.g. "groq:qwen3.8-27b"). Overrides `provider`. */
+  model?: unknown;
 }
 
 function sseEvent(event: Record<string, unknown>): Uint8Array {
@@ -142,11 +144,21 @@ export async function POST(request: NextRequest) {
   }
 
   // 5. Stream with provider failover — or pin to one model when the client
-  // asked for a specific provider (dashboard model selector). A pinned
-  // provider that errors surfaces immediately; "auto" keeps the chain.
+  // asked for a specific model (dashboard model selector). A pinned model that
+  // errors surfaces immediately; "auto" keeps the chain.
   let providers = availableProviders(process.env);
+  const modelParam = typeof body.model === "string" ? body.model : "";
   const providerParam = typeof body.provider === "string" ? body.provider : "auto";
-  if (providerParam !== "auto") {
+  if (modelParam) {
+    const pinned = resolveConfiguredModel(modelParam, process.env);
+    if (!pinned) {
+      return Response.json(
+        { error: `Model "${modelParam}" is not configured or unavailable` },
+        { status: 400 },
+      );
+    }
+    providers = [pinned];
+  } else if (providerParam !== "auto") {
     providers = providers.filter((p) => p.id === providerParam);
     if (providers.length === 0) {
       return Response.json(
