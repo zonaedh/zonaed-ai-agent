@@ -72,6 +72,7 @@ export default function ChatPage() {
     typeof window !== "undefined" ? (localStorage.getItem("chat.model") ?? "auto") : "auto",
   );
   const [deepDraft, setDeepDraft] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -254,21 +255,60 @@ export default function ChatPage() {
   const activeModel = models.find((m) => m.id === selected);
 
   return (
-    <div className="flex h-dvh bg-white text-neutral-800">
-      <ChatSidebar
-        sessions={summaries}
-        activeId={activeId}
-        onSelect={(id) => setSessionId(id)}
-        onNew={newChat}
-        onDelete={(id) => void deleteSession(id)}
-      />
-      <main className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between px-6 py-3">
-          <div className="relative">
+    <div className="relative flex h-screen overflow-hidden bg-white text-neutral-800 supports-[height:100dvh]:h-dvh">
+      {/* Desktop sidebar — always visible from md up. */}
+      <div className="hidden h-full md:block">
+        <ChatSidebar
+          sessions={summaries}
+          activeId={activeId}
+          onSelect={(id) => setSessionId(id)}
+          onNew={newChat}
+          onDelete={(id) => void deleteSession(id)}
+        />
+      </div>
+
+      {/* Mobile drawer — off-canvas, overlaps the chat; opened via the ☰ button. */}
+      {menuOpen && (
+        <div
+          className="absolute inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <div
+        className={`absolute inset-y-0 left-0 z-40 transition-transform duration-200 md:hidden ${
+          menuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        }`}
+      >
+        <ChatSidebar
+          sessions={summaries}
+          activeId={activeId}
+          onSelect={(id) => {
+            setSessionId(id);
+            setMenuOpen(false);
+          }}
+          onNew={() => {
+            newChat();
+            setMenuOpen(false);
+          }}
+          onDelete={(id) => void deleteSession(id)}
+        />
+      </div>
+
+      <main className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center gap-2 px-3 py-2 md:gap-3 md:px-6 md:py-3">
+          <button
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open chat history"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xl text-neutral-500 hover:bg-neutral-100 md:hidden"
+          >
+            ☰
+          </button>
+          <div className="relative min-w-0 flex-1 sm:flex-none">
             <select
               value={selected}
               onChange={(e) => pickModel(e.target.value)}
-              className="appearance-none rounded-xl border border-neutral-200 bg-white py-1.5 pl-9 pr-8 text-sm font-medium shadow-sm outline-none hover:border-neutral-300"
+              className="appearance-none rounded-xl border border-neutral-200 bg-white py-1.5 pl-9 pr-7 text-sm font-medium shadow-sm outline-none hover:border-neutral-300 sm:pr-8"
             >
               <option value="auto">⚡ Auto Route</option>
               {models.map((m) => (
@@ -278,7 +318,7 @@ export default function ChatPage() {
               ))}
             </select>
             <span className="pointer-events-none absolute left-3 top-1.5 text-sm">🤖</span>
-            <span className="pointer-events-none absolute right-3 top-2 text-xs text-neutral-400">▾</span>
+            <span className="pointer-events-none absolute right-2.5 top-2 text-xs text-neutral-400 sm:right-3">▾</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden text-xs text-neutral-400 sm:block">
@@ -290,7 +330,7 @@ export default function ChatPage() {
             </span>
             <button
               onClick={newChat}
-              className="rounded-xl bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-neutral-700"
+              className="whitespace-nowrap rounded-xl bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-neutral-700 md:px-4"
             >
               + New Chat
             </button>
@@ -299,9 +339,9 @@ export default function ChatPage() {
 
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-y-auto">
         {messages.length === 0 && !stream && (
-          <div className="flex flex-1 flex-col items-center justify-center px-4 pb-24">
-            <div className="mb-6 h-14 w-14 rounded-full bg-gradient-to-br from-indigo-400 via-sky-300 to-emerald-200 shadow-lg shadow-indigo-100" />
-            <h1 className="text-center text-2xl font-semibold text-neutral-900">
+          <div className="flex flex-1 flex-col items-center justify-center px-4 pb-16 pt-8">
+            <div className="mb-5 h-12 w-12 rounded-full bg-gradient-to-br from-indigo-400 via-sky-300 to-emerald-200 shadow-lg shadow-indigo-100 md:h-14 md:w-14" />
+            <h1 className="text-center text-xl font-semibold text-neutral-900 md:text-2xl">
               {greeting ? `${greeting}, Zonaed` : "Welcome, Zonaed"}
             </h1>
             <p className="mt-1 text-center text-sm text-neutral-500">
@@ -310,21 +350,21 @@ export default function ChatPage() {
           </div>
         )}
         {messages.length > 0 && (
-          <div className="mx-auto w-full max-w-3xl space-y-3 px-6 pb-4">
+          <div className="mx-auto w-full max-w-3xl space-y-3 px-3 pb-4 md:px-6">
             {messages.map((m) => (
               <div
                 key={m.client_id}
                 className={
                   m.role === "user"
-                    ? "ml-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-indigo-600 px-4 py-2 text-sm text-white"
-                    : "mr-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-neutral-100 px-4 py-2 text-sm text-neutral-800"
+                    ? "ml-auto max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-indigo-600 px-3.5 py-2 text-sm text-white md:max-w-[85%] md:px-4"
+                    : "mr-auto max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-neutral-100 px-3.5 py-2 text-sm text-neutral-800 md:max-w-[85%] md:px-4"
                 }
               >
                 {m.content}
               </div>
             ))}
             {stream && (
-              <div className="mr-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-neutral-100 px-4 py-2 text-sm text-neutral-800">
+              <div className="mr-auto max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-neutral-100 px-3.5 py-2 text-sm text-neutral-800 md:max-w-[85%] md:px-4">
                 {stream.text || "…"}
                 {stream.provider && (
                   <span className="ml-2 align-middle text-[10px] text-neutral-400">{stream.provider}</span>
@@ -349,7 +389,7 @@ export default function ChatPage() {
           e.preventDefault();
           void send(input);
         }}
-        className="mx-auto w-full max-w-3xl px-6 pb-5"
+        className="mx-auto w-full max-w-3xl px-3 pb-[max(env(safe-area-inset-bottom,0px),0.75rem)] pt-2 md:px-6 md:pb-5"
       >
         <div className="rounded-2xl border border-neutral-200 bg-white shadow-lg shadow-neutral-100">
           <textarea

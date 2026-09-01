@@ -42,12 +42,15 @@ export default function ChatSidebar({
   onSelect,
   onNew,
   onDelete,
+  className = "",
 }: {
   sessions: SessionSummary[];
   activeId: string | null;
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  /** Extra classes merged into the root (<aside>). Use to show/hide per breakpoint. */
+  className?: string;
 }) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -56,7 +59,9 @@ export default function ChatSidebar({
     [sessions, q],
   );
   return (
-    <aside className="flex h-full w-72 shrink-0 flex-col border-r border-neutral-200 bg-neutral-50">
+    <aside
+      className={`flex h-full w-72 shrink-0 flex-col border-r border-neutral-200 bg-neutral-50 pb-[env(safe-area-inset-bottom,0px)] ${className}`}
+    >
       <div className="px-4 pb-2 pt-4">
         <span className="text-sm font-semibold text-neutral-800">Zonaed AI</span>
       </div>
