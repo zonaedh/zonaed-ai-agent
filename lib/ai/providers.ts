@@ -40,10 +40,10 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   gemini: {
     id: "gemini",
     label: "Gemini",
-    // Uses a stable alias — exact version names (e.g. gemini-2.5-flash) can
-    // 404 on some accounts; gemini-flash-latest always resolves (verified live
-    // via SSE streaming with the AQ. AI Studio key).
-    model: "gemini-flash-latest",
+    // gemini-3.7-flash is the newest verified-working flash model on this key
+    // (tested live: generateContent + SSE streamGenerateContent both return
+    // 200/OK). Older exact names (gemini-2.5-flash) 404 on this account.
+    model: "gemini-3.7-flash",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
     headers: () => ({}), // Gemini uses ?key= query param
     protocol: "gemini",
