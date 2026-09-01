@@ -12,6 +12,7 @@
     "verify:sync": "tsx --env-file=.env.local scripts/verify-sync.mts",
     "verify:intelligence": "tsx scripts/verify-intelligence.mts",
     "verify:skills": "tsx scripts/verify-skills.mts",
+    "verify:search": "tsx scripts/verify-search.mts",
     "verify:pwa": "tsx scripts/verify-pwa.mts",
     "generate:pwa": "node scripts/generate-pwa-assets.mjs",
     "smoke:chat": "node --env-file=.env.local --import tsx scripts/smoke-chat.mjs",

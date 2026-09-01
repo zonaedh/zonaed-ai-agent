@@ -148,6 +148,24 @@ priority at a time, verified against §8 before moving on.
 
 ## 6. Full-text search (chat, memory, knowledge, skills)
 
+- [x] `lib/search/engine.ts` — pure offline FTS: tokenizer (Latin accents NFD-collated,
+      Bengali/Banglish safe — Indic combining vowel signs kept via `\p{M}`),
+      weighted scoring (multi-word phrase +6/+6 title/+4 tags/+2 body; per-term
+      +2 title/+1.5 tags/+1+freq body; 30-day recency bonus only among real
+      matches; zero score = no match), deterministic sort (score desc, recency
+      desc), `makeSnippet` (window around first hit with ellipses) and
+      `highlight` (per-occurrence `{text, hit}` segments). Fully unit-testable.
+- [x] `lib/search/adapters.ts` — Dexie row → `SearchDocument` mapping for the
+      four target stores (chat content/role, memory, knowledge, skills tags).
+- [x] `/search` page (`app/search/page.tsx`) — debounced client search over the
+      local Dexie cache (offline-first), grouped by source, weighted ranking,
+      hit highlighting via `<mark>`, matched-field badges, empty/loading/error/
+      no-results states; skills results link into `/skills`.
+- [x] Verification: `npm run verify:search` 15/15 pass (tokenizer incl. Bengali,
+      phrase > partial ranking, title > body, tags participate, recency tiebreak,
+      snippet ellipses, highlight multiplicity, limit, determinism).
+      `tsc` + `eslint` + `next build` clean (`/search` prerendered static).
+
 ## 7. Data export/backup
 
 ## 8. Recurring tasks + quick capture shortcut
