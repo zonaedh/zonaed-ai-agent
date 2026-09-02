@@ -89,12 +89,13 @@ webapp's `sync/` API contract + provider keys (env-based, no code sharing).
 
 ## E0. Scaffold
 
-- [ ] Clone repo, manifest v3, TypeScript, ESLint, CI (build + typecheck +
-      secret-scan) â€” mirrors the webapp's Step-0 hygiene
-- [ ] Sync-token client (`zsy_â€¦` tokens issued by the webapp settings),
-      Dexie (extension-local) store for CRM rows + settings
-- [ ] Options page: webapp base URL + sync token + provider key entry;
-      "Test connection" against `/api/auth/verify`
+- [x] Repo cloned + scaffolded: manifest v3, TypeScript + esbuild build,
+      ESLint, CI (typecheck + lint + gitleaks) — mirrors webapp Step-0 hygiene.
+      COMMITTED + PUSHED: zonaed-ai-agent-extension@main 283d0a8 (19 files).
+- [x] Sync-token client (src/lib/webapp.ts — zsy_ shape check, Bearer attach,
+      pull contract) + chrome.storage settings store (src/lib/settings.ts).
+- [x] Options page: webapp base URL + sync token + feature toggles;
+      "Test connection" probes POST /api/sync/pull with the stored token.
 
 ## E1. Sync contract client
 
