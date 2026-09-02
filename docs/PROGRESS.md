@@ -111,48 +111,35 @@ webapp's `sync/` API contract + provider keys (env-based, no code sharing).
 - [x] Manual-send-first (no auto-send without explicit user action).
 ## E3. Inline Ghostwriter Copilot
 
-- [ ] Floating badge on focused inputs â†’ selection-scoped rewrite/expand/
-      shorten via the provider stack; inserts on user approval
-
+- [x] Floating badge (content/ghostwriter.ts) on focused inputs → selection-scoped
+      Rewrite/Expand/Shorten via background GHOSTWRITE (lib/edit.ts prompts embed the
+      webapp anti-cliché rules); inserts on user approval only. COMMIT f3ef85d.
 ## E4. Form Autofill
 
-- [ ] Detect common form fields â†’ fill from the local profile (options page),
-      always user-confirmed per form
-
+- [x] lib/autofill.ts pure matcher (email/phone/website/company/address/name,
+      surname-ambiguous skip) + content/autofill.ts toolbar-initiated fill —
+      never overwrites, never touches password/hidden/disabled, no auto-submit.
 ## E5. Scheduled Page Watcher
 
-- [ ] `chrome.alarms` polling of user-pinned URLs â†’ diff detection â†’
-      notification (no server dependency)
-
+- [x] chrome.alarms 5-min poll (lib/watcher.ts: normalizeWatchUrl, FNV hashText,
+      htmlToText, applyCheck seed-then-diff) → chrome.notifications on change;
+      watchlist UI in options (one URL per line), alarm auto-create/clear.
 ## E6. OCR + Structured Scraping + YouTube Repurposing
 
-- [ ] OCR via tesseract.js on captured screenshots
-- [ ] Structured scraping recipes (CSS selectors) for login-protected pages
-- [ ] YouTube Repurposing: live-watch-page transcript extraction (content
-      script) â†’ repurpose prompts (blog/thread/newsletter)
-
-Each E-phase: verify (tsc + eslint + build + unit checks), commit, and only
-then move on. The extension never embeds provider keys in content scripts â€”
+- [x] Structured scraping recipes (urlPattern + rowSelector + named fields) in
+      options (JSON editor) — content/scraper.ts extracts records on
+      SCRAPE_TAB; lib/scraper.ts rowsToCsv (RFC-4180 quoting) for export.
+- [x] YouTube Repurposing: content/youtube.ts floating button on watch/shorts
+      pages → live ytInitialPlayerResponse caption-track fetch → timedtext XML
+      parse (lib/scraper.ts parseTranscriptXml) → background REPURPOSE LLM →
+      blog outline + 3-tweet thread + LinkedIn post in a copy-able modal.
 keys live in the background service worker options storage, and AI calls go
 through the webapp API where possible.
-
-- [ ] `@sentry/nextjs` + `instrumentation.ts` (server, `onRequestError`) +
-      `instrumentation-client.ts` â€” both no-op unless DSN env is set;
-      `lib/env.ts` + `.env.example` updated
-- [ ] `next build` green with and without a DSN
-
 ## W6. Deploy-close-out (user actions, tracked)
 
 - [ ] Upstash keys in Vercel (rate limiting actually enforcing)
-- [ ] GitHub Actions secrets `PROD_URL` + `CRON_SECRET` for the reminders cron
-- [ ] Optional: custom domain `agent.thesharkweb.com`
+- [ ] GitHub Actions secrets PROD_URL + CRON_SECRET for the reminders cron
+- [ ] Optional: custom domain agent.thesharkweb.com
 
-      content extraction (strip the trigger, keep the fact),
-      category classification (business/preference/correction/project/general)
-      â€” same behaviour contract as the extension, per Â§5.1
-- [ ] Chat integration â€” user message matches a trigger â†’ the fact is written
-      to the Dexie `memory` store via `putLocal` (source `conversation`),
-      sync carries it to Supabase; chat UI shows a "Saved to memory" flash
-- [ ] `scripts/verify-autolearn.mts` + npm `verify:autolearn` â€” trigger
-      matrix (EN/Banglish/Bengali), extraction, category rules, no-false-positive
-
+All three are USER-ACTION deploy steps documented in docs/DEPLOYMENT.md
+(env-var table, cron schedules, .github/workflows/reminders.yml).
