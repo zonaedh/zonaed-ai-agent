@@ -52,6 +52,7 @@ const envSchema = z.object({
   VAPID_SUBJECT: z.string().optional(),
   // Optional
   SENTRY_DSN: z.string().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

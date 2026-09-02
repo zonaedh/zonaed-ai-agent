@@ -28,6 +28,7 @@
     "verify:v2": "tsx scripts/verify-v2.mts"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.73.0",
     "@supabase/supabase-js": "^2.112.4",
     "dexie": "^4.4.5",
     "dexie-react-hooks": "^4.4.0",

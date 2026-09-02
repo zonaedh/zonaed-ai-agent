@@ -61,9 +61,22 @@ Gaps found (each becomes a build item below):
 - [x] Chat action - "Copy table (TSV)" button on the last assistant message
       when it contains a Markdown table â†’ clipboard
 
+
 ## W5. Sentry (Â§7 pre-launch)
 
-
+- [x] `@sentry/nextjs@10.73.0` installed (Next 16 compatible)
+- [x] `instrumentation.ts` — server register() inits Sentry ONLY when
+      `SENTRY_DSN` is set (tracesSampleRate 0.1, sendDefaultPii false);
+      `export const onRequestError = Sentry.captureRequestError` for Route
+      Handler / cron errors
+- [x] `instrumentation-client.ts` — browser register() inits ONLY when
+      `NEXT_PUBLIC_SENTRY_DSN` is set (only public vars reach the client
+      bundle); same sampling/no-PII defaults
+- [x] `.env.example`, `lib/env.ts`, `scripts/check-env.mjs` — both DSNs
+      documented as optional (blank = Sentry fully disabled)
+- [x] Verified: no DSN configured → `next build` exit 0 (no SDK init), tsc 0,
+      eslint 0. (Sentry source-map upload stays off until SENTRY_AUTH_TOKEN +
+      org/project are added at deploy time.)
 ---
 
 # Chrome Extension â€” `zonaed-ai-agent-extension` (separate repo)

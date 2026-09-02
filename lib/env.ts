@@ -33,6 +33,7 @@ export const envSchema = z.object({
   VAPID_SUBJECT: z.string().optional(),
   // Optional
   SENTRY_DSN: z.string().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
