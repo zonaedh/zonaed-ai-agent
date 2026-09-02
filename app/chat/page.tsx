@@ -17,6 +17,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { listLive, newClientId, putLocal, softDeleteLocal } from "@/lib/db/repo";
 import type { ChatMessageRow, ExampleRow, MemoryRow, SkillRow } from "@/lib/db/types";
 import { buildPreamble } from "@/lib/ai/matching";
+import { detectMemoryCapture } from "@/lib/ai/auto-learn";
+import { markdownTableToTsv } from "@/lib/export/tsv";
 import { authedFetch } from "@/lib/auth/app-session";
 import ChatSidebar, { type SessionSummary } from "./Sidebar";
 
@@ -68,6 +70,8 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [stream, setStream] = useState<{ text: string; provider?: string; model?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [memoryFlash, setMemoryFlash] = useState<string | null>(null);
+  const [tsvCopied, setTsvCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [selected, setSelected] = useState<string>(
@@ -140,6 +144,24 @@ export default function ChatPage() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
+
+      // §5.1 conversational auto-learn: "Remember that…" / "মনে রাখো…" style
+      // messages capture the fact straight into the synced memory store. This
+      // runs inline (no LLM call, no network) — same trigger phrases and
+      // category classification as the extension, per plan §5.1.
+      const capture = detectMemoryCapture(text);
+      if (capture) {
+        await putLocal("memory", {
+          client_id: newClientId(),
+          content: capture.content,
+          category: capture.category,
+          source: "conversation",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+        setMemoryFlash(`Saved to memory (${capture.category})`);
+        setTimeout(() => setMemoryFlash(null), 4000);
+      }
 
       // Preamble from Dexie (source of truth, works offline) via shared logic.
       const [skills, memories, examples] = await Promise.all([
@@ -420,6 +442,32 @@ export default function ChatPage() {
                 )}
               </div>
             )}
+            {memoryFlash && (
+              <div className="mr-auto rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+                🧠 {memoryFlash}
+              </div>
+            )}
+            {/* Sheets Export (plan Tool split): Markdown table → TSV clipboard */}
+            {(() => {
+              const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+              if (!lastAssistant || busy) return null;
+              const { tsv, tables } = markdownTableToTsv(lastAssistant.content);
+              if (tables === 0) return null;
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(tsv);
+                    setTsvCopied(true);
+                    setTimeout(() => setTsvCopied(false), 1500);
+                  }}
+                  title={`Copy ${tables} table${tables === 1 ? "" : "s"} as TSV for Google Sheets / Excel`}
+                  className="mr-auto rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600"
+                >
+                  {tsvCopied ? "✓ Copied as TSV" : `📋 Copy table${tables === 1 ? "" : "s"} (TSV)`}
+                </button>
+              );
+            })()}
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
             )}
