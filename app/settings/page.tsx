@@ -27,6 +27,45 @@ const DIGEST_OPTIONS: { value: DigestChoice; label: string; hint: string }[] = [
   { value: "weekly", label: "Weekly", hint: "Once a week" },
 ];
 
+interface TokenInfo {
+  id: string;
+  label: string;
+  created_at: string;
+  revoked_at: string | null;
+}
+
+async function mintToken(
+  label: string,
+  setFresh: (t: string) => void,
+  reload: () => Promise<void>,
+): Promise<void> {
+  const res = await authedFetch("/api/settings/sync-tokens", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ label }),
+  });
+  const json = (await res.json()) as { token?: string; error?: string };
+  if (!res.ok || !json.token) throw new Error(json.error ?? `HTTP ${res.status}`);
+  setFresh(json.token);
+  await reload();
+}
+
+async function revokeToken(
+  id: string,
+  reload: () => Promise<void>,
+): Promise<void> {
+  const res = await authedFetch("/api/settings/sync-tokens", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
+  if (!res.ok) {
+    const json = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(json?.error ?? `HTTP ${res.status}`);
+  }
+  await reload();
+}
+
 export default function SettingsPage() {
   const [state, setState] = useState<PushState | null>(null);
   const [digest, setDigest] = useState<DigestChoice>("off");
@@ -35,9 +74,25 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
   const [learnFlash, setLearnFlash] = useState(false);
+  // Extension sync tokens (E1): list + mint + revoke.
+  const [tokens, setTokens] = useState<TokenInfo[] | null>(null);
+  const [tokenLabel, setTokenLabel] = useState("");
+  const [freshToken, setFreshToken] = useState<string | null>(null);
+  const [tokenBusy, setTokenBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     setState(await getPushState());
+  }, []);
+
+  const loadTokens = useCallback(async () => {
+    try {
+      const res = await authedFetch("/api/settings/sync-tokens");
+      if (!res.ok) return;
+      const json = (await res.json()) as { tokens?: TokenInfo[] };
+      setTokens(json.tokens ?? []);
+    } catch {
+      /* offline / unauthenticated — section just stays empty */
+    }
   }, []);
 
   useEffect(() => {
@@ -50,6 +105,12 @@ export default function SettingsPage() {
       if (cancelled || !res.ok) return;
       const json = (await res.json()) as { enabled: boolean };
       if (!cancelled) setLearnEnabled(json.enabled);
+    });
+    // Extension sync tokens list (E1) — async-.then pattern (no sync setState).
+    void authedFetch("/api/settings/sync-tokens").then(async (res) => {
+      if (cancelled || !res.ok) return;
+      const json = (await res.json()) as { tokens?: TokenInfo[] };
+      if (!cancelled) setTokens(json.tokens ?? []);
     });
     return () => {
       cancelled = true;
@@ -252,6 +313,91 @@ export default function SettingsPage() {
               : "Off — no learning job runs until you enable it."}
           </p>
         )}
+      </section>
+
+      {/* -------------------------------------------- extension tokens -- */}
+      <section className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+        <h2 className="text-sm font-semibold">Extension sync tokens</h2>
+        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+          A <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">zsy_…</code> token lets the
+          Chrome extension sync with this account. The token is shown once — paste it into the
+          extension options immediately.
+        </p>
+        <div className="mt-3 flex gap-2">
+          <input
+            value={tokenLabel}
+            onChange={(e) => setTokenLabel(e.target.value)}
+            placeholder="Label (e.g. work laptop)"
+            aria-label="Token label"
+            className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-emerald-500 dark:border-zinc-700"
+          />
+          <button
+            type="button"
+            disabled={tokenBusy}
+            onClick={() => {
+              setTokenBusy(true);
+              setError(null);
+              mintToken(tokenLabel || "extension", setFreshToken, loadTokens)
+                .then(() => setTokenLabel(""))
+                .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+                .finally(() => setTokenBusy(false));
+            }}
+            className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {tokenBusy ? "Creating…" : "Create token"}
+          </button>
+        </div>
+        {freshToken && (
+          <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/40 dark:bg-amber-950/30">
+            <p className="text-[11px] font-medium text-amber-800 dark:text-amber-200">
+              Copy this now — it will never be shown again:
+            </p>
+            <code className="mt-1 block break-all rounded bg-white px-2 py-1.5 text-[11px] text-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
+              {freshToken}
+            </code>
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard.writeText(freshToken);
+                setSavedFlash(true);
+                setTimeout(() => setSavedFlash(false), 1500);
+              }}
+              className="mt-2 rounded-lg border border-amber-400 px-2 py-1 text-[11px] font-medium text-amber-800 hover:bg-amber-100 dark:text-amber-200"
+            >
+              {savedFlash ? "Copied ✓" : "Copy token"}
+            </button>
+          </div>
+        )}
+        <ul className="mt-3 space-y-1.5">
+          {tokens === null && <li className="text-[11px] text-zinc-400">Loading…</li>}
+          {tokens?.length === 0 && (
+            <li className="text-[11px] text-zinc-500 dark:text-zinc-400">No tokens yet.</li>
+          )}
+          {tokens?.map((t) => (
+            <li key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-1.5 dark:border-zinc-800">
+              <div className="min-w-0">
+                <span className="block truncate text-xs font-medium">{t.label}</span>
+                <span className="text-[10px] text-zinc-400">
+                  created {new Date(t.created_at).toLocaleDateString()}
+                  {t.revoked_at ? " · revoked" : ""}
+                </span>
+              </div>
+              {!t.revoked_at && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    revokeToken(t.id, loadTokens)
+                      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+                  }}
+                  className="shrink-0 rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-red-600 hover:border-red-400 dark:border-zinc-700"
+                >
+                  Revoke
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
       </section>
 
       {error && (
