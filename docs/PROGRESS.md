@@ -99,16 +99,16 @@ webapp's `sync/` API contract + provider keys (env-based, no code sharing).
 
 ## E1. Sync contract client
 
-- [ ] Pull/push against `/api/sync/pull|push` (watermark + LWW semantics,
-      tombstone awareness) â€” proven against the live webapp endpoints
-- [ ] Smoke script (node) â€” needs a real token from the deployed app
-
+- [x] Pull/push against `/api/sync/pull|push` (watermark + LWW semantics,
+      tombstone awareness) - proven via tests/pure.test.mts (9/9) + smoke
+      script against the deployed webapp. Webapp mints/revokes zsy tokens
+      in /settings (POST /api/settings/sync-tokens). 626d995 + f887bfe.
 ## E2. WhatsApp Lead CRM & Auto-Responder
 
-- [ ] `web.whatsapp.com` content script: chat-list observer â†’ lead rows,
-      notes/tags, respond suggestions via provider routing
-- [ ] Manual-send-first (no auto-send without explicit user action)
-
+- [x] `web.whatsapp.com` content script: chat-list observer (#pane-side) →
+      local LeadRows (lib/crm + lib/crm-store), floating ✨ Suggest reply
+      drafts via background GENERATE_REPLY → lib/llm (OpenAI-compatible)
+- [x] Manual-send-first (no auto-send without explicit user action).
 ## E3. Inline Ghostwriter Copilot
 
 - [ ] Floating badge on focused inputs â†’ selection-scoped rewrite/expand/
